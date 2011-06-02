@@ -1,0 +1,27 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>jaitools</artifactId>
+        <groupId>com.googlecode.jaitools</groupId>
+        <version>1.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jt-utils</artifactId>
+    <name>Support and utility classes</name>
+
+    <description>Support and utility classes used by other JAI-tools components and
+      available for general use.</description>
+
+    <build>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.vividsolutions</groupId>
+            <artifactId>jts</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+
+
