@@ -1,5 +1,5 @@
 /* 
- *  Copyright (c) 2009-2010, Daniele Romagnoli. All rights reserved. 
+ *  Copyright (c) 2009-2011, Daniele Romagnoli. All rights reserved. 
  *   
  *  Redistribution and use in source and binary forms, with or without modification, 
  *  are permitted provided that the following conditions are met: 
@@ -71,7 +71,6 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
         RenderedImage[] classifierImages = null;
 
         classifierImages = (RenderedImage[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.CLASSIFIED_ARG);
-//        final int numClassifiers = classifierImages != null ? classifierImages.length : 0;
 
         ImageLayout layout = RIFUtil.getImageLayoutHint(renderHints);
         if (layout == null) layout = new ImageLayout();

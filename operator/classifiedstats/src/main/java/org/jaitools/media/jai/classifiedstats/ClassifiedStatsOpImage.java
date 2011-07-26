@@ -137,7 +137,13 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      * @param noDataRanges
      *            an optional list of {@link Range} objects defining values to
      *            treat as NODATA
-     * @param noDataClassified 
+     * @param noDataClassified
+     *            an optional array of Doubles defining values to
+     *            treat as NODATA for the related classifiedImage. Note that 
+     *            classified images will always leverage on integer types 
+     *            (BYTE, INTEGER, SHORT, ...). Such noData are specified
+     *            as Double to allow the users to provide NaN in case a NoData
+     *            is unavailable for the related classifiedImage.
      * 
      * @see ClassifiedStatsDescriptor
      * @see Statistic
@@ -305,12 +311,13 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         final int minTileY = minY / tileHeight;
         final int maxTileX = maxX / tileWidth;
         final int maxTileY = maxY / tileHeight;
-
+        Integer[] key = new Integer[numClassified];
         // //
         //
         // Iterate
         //
         // //
+        // Loop over the tiles
         for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
             for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                 for (int tRow = 0; tRow < tileWidth; tRow++) {
@@ -320,7 +327,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                             int col = tileX * tileWidth + tCol;
                             if (col >= minX && col <= maxX) {
                                 if (roi == null || roi.contains(col, row)) {
-                                    Integer[] key = new Integer[numClassified];
+                                    //Check for noData on classified Images
                                     boolean skip = false;
                                     for (int i = 0; i < numClassified; i++) {
                                         key[i] = classIter[i].getSample(col, row, 0);
@@ -331,6 +338,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                     if (skip){
                                         continue;
                                     }
+                                    
+                                    //Offer values to statistics operations                                    
                                     for (Integer band : srcBands) {
                                         sampleValues[band] = dataIter.getSample(col, row, band);
                                         Map<MultiKey, StreamingSampleStats> resultPerBand = results.get(band);
@@ -361,7 +370,11 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             }
         }
         
+        // //
+        // 
         // Closing/disposing the iterators
+        // 
+        // //
         dataIter.done();
         for (int i = 0; i < numClassified; i++) {
             classIter[i].done();
@@ -438,7 +451,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                 results.put(index, resultsPerBand);
 
             }
-
+            Integer[] key = new Integer[numClassified];
+            // Loop over the tiles
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                     for (int tRow = 0; tRow < tileWidth; tRow++) {
@@ -448,7 +462,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                 int col = tileX * tileWidth + tCol;
                                 if (col >= minX && col <= maxX) {
                                     if (roi == null || roi.contains(col, row)) {
-                                        Integer[] key = new Integer[numClassified];
+                                        //Check for noData on classified Images
                                         boolean skip = false;
                                         for (int i = 0; i < numClassified; i++) {
                                             key[i] = classIter[i].getSample(col, row, 0);
@@ -460,6 +474,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                             continue;
                                         }
                                         
+                                        //Offer values to statistics operations
                                         for (Integer band : srcBands) {
                                             sampleValues[band] = dataIter.getSample(col, row, band);
                                             Map<MultiKey, StreamingSampleStats> resultPerBand = results
@@ -503,7 +518,11 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             }
         }
         
+        // //
+        // 
         // Closing/disposing the iterators
+        // 
+        // //
         dataIter.done();
         for (int i = 0; i < numClassified; i++) {
             classIter[i].done();

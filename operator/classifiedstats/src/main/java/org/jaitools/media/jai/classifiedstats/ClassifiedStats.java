@@ -101,24 +101,28 @@ public class ClassifiedStats {
     }
 
     /**
-     * Store the results for the given classifierKey. Package-private method used by
+     * Store the results for the given classificationKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
-    void setResults(int band, MultiKey classifierKey, StreamingSampleStats stats, List<Range> ranges) {
-        List<Result> rs = results.get(classifierKey);
+    void setResults(int band, MultiKey classificationKey, StreamingSampleStats stats, List<Range> ranges) {
+
+        //First preliminary check on an already populated list of results for that key
+        List<Result> rs = results.get(classificationKey);
         if (rs == null) {
             rs = CollectionFactory.list();    
         }
+        
+        //Populate the results list by scanning for statistics.
         for (Statistic s : stats.getStatistics()) {
             Result r = new Result(band, s, ranges,
                     stats.getStatisticValue(s),
                     stats.getNumOffered(s),
                     stats.getNumAccepted(s),
                     stats.getNumNaN(s),
-                    stats.getNumNoData(s), classifierKey);
+                    stats.getNumNoData(s), classificationKey);
             rs.add(r);
         }
-        results.put(classifierKey, rs);
+        results.put(classificationKey, rs);
     }
 
     void setResults(int band, MultiKey classifierKey, StreamingSampleStats stats) {
@@ -167,7 +171,10 @@ public class ClassifiedStats {
     }
 
     /**
-     * Returns the {@code Result} objects.
+     * Returns the {@code Result} objects as a Map<MultiKey, List<Result>> 
+     * The keys are multiKey setup on top of the classified pixel values. For each of them,
+     * a List of {@code Result}s is provided. In case of classified stats against local ranges,
+     * the list will contain the Result for each range.
      *
      * @return the results
      * @see Result

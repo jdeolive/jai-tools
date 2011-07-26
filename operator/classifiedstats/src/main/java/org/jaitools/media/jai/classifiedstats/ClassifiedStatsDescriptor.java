@@ -26,7 +26,6 @@
 package org.jaitools.media.jai.classifiedstats;
 
 import java.awt.Rectangle;
-import java.awt.geom.AffineTransform;
 import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
@@ -41,7 +40,6 @@ import org.jaitools.numeric.Range;
 import org.jaitools.numeric.RangeComparator;
 import org.jaitools.numeric.RangeUtils;
 import org.jaitools.numeric.Statistic;
-
 
 /**
  * Calculates a number of summary statistics, for the whole data image. 
@@ -59,8 +57,8 @@ import org.jaitools.numeric.Statistic;
  * {@link org.jaitools.numeric.Statistic#MEDIAN}, for which the
  * {@link org.jaitools.numeric.Statistic#APPROX_MEDIAN} alternative is provided.
  * <p>
- * Note that the source names for this operator are "dataImage" and "classifiedImageX"
- * rather than the more typical JAI names "source0", "source1".
+ * Note that the source name for this operator are "dataImage" 
+ * 
  * <p>
  * The range of data image values that contribute to the analysis can be constrained
  * in two ways: with the "ranges" parameter and the "noDataRanges" parameter.
@@ -84,8 +82,6 @@ import org.jaitools.numeric.Statistic;
  *
  * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
  * pb.setSource("dataImage", myData);
- * pb.setSource("classifiedImage0", myClassifiedImage0);
- * pb.setSource("classifiedImage1", myClassifiedImage1);
  *
  * Statistic[] stats = {
  *     Statistic.MIN,
@@ -96,6 +92,7 @@ import org.jaitools.numeric.Statistic;
  * };
  *
  * pb.setParameter("stats", stats);
+ * pb.setParameter("classified", new RenderedImage[]{myClassifiedImage0, myClassifiedImage1});
  * RenderedOp op = JAI.create("ClassifiedStats", pb);
  *
  * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
