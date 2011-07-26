@@ -19,6 +19,7 @@
 
     <modules>
         <module>attributeop</module>
+        <module>classifiedstats</module>
         <module>contour</module>
         <module>kernelstats</module>
         <module>maskedconvolve</module>
