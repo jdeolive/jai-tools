@@ -70,13 +70,8 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
         RenderedImage dataImage = paramBlock.getRenderedSource(ClassifiedStatsDescriptor.DATA_IMAGE);
         RenderedImage[] classifierImages = null;
 
-        final int numClassifiers = paramBlock.getNumSources() - 1;
-        if (numClassifiers >= 1) {
-            classifierImages = new RenderedImage[numClassifiers];
-            for (int i = 0; i < numClassifiers; i++){
-                classifierImages[i] = paramBlock.getRenderedSource(ClassifiedStatsDescriptor.CLASSIFIED_IMAGE + i);
-            }
-        }
+        classifierImages = (RenderedImage[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.CLASSIFIED_ARG);
+//        final int numClassifiers = classifierImages != null ? classifierImages.length : 0;
 
         ImageLayout layout = RIFUtil.getImageLayoutHint(renderHints);
         if (layout == null) layout = new ImageLayout();
@@ -122,6 +117,8 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
                 layout.setColorModel(cm);
             }
         }
+        
+        Double[] noDataClassified = (Double[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.NODATA_CLASSIFIED_ARG);
 
         ROI roi = (ROI) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.ROI_ARG);
 
@@ -135,7 +132,8 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
                 ranges,
                 rangesType,
                 rangeLocalStats,
-                noDataRanges
+                noDataRanges,
+                noDataClassified
                 );
     }
 }

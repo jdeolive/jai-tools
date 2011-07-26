@@ -76,9 +76,8 @@ public class ClassifiedStatsTest {
             RenderedImage stripedImage = ImageIO.read(classifiedStripes);
             ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
             pb.addSource(sampleImage);
-            pb.addSource(stripedImage);
-            pb.addSource(classifiedImage);
-    
+            pb.setParameter("classified", new RenderedImage[]{stripedImage, classifiedImage});
+            
             pb.setParameter("stats", new Statistic[]{Statistic.MIN, Statistic.MAX, Statistic.RANGE, Statistic.SUM});
             pb.setParameter("bands", new Integer[]{0});
     
@@ -92,7 +91,7 @@ public class ClassifiedStatsTest {
                 MultiKey key = it.next(); 
                 List<Result> rs = results.get(key);
                 for (Result r: rs){
-                    System.out.println(r.toString() + " key:" + key);
+                    System.out.println(r.toString() + " classifiers:" + key);
                 }
             }
             
@@ -144,10 +143,9 @@ public class ClassifiedStatsTest {
         InputStream classifiedStripes = ClassifiedStatsTest.class.getResourceAsStream("5stripes.tif");
         RenderedImage stripedImage = ImageIO.read(classifiedStripes);
         pb.addSource(sampleImage);
-        pb.addSource(stripedImage);
-        pb.addSource(classifiedImage);
         pb.setParameter("stats", new Statistic[]{Statistic.MIN, Statistic.MAX, Statistic.RANGE, Statistic.SUM});
         pb.setParameter("bands", new Integer[]{0});
+        pb.setParameter("classified", new RenderedImage[]{stripedImage, classifiedImage});
         
         List<Range<Double>> ranges = CollectionFactory.list();
         ranges.add(Range.create(0d, true, 100d , true));

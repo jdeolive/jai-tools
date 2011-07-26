@@ -164,48 +164,56 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
     static final int DATA_IMAGE = 0;
     static final int CLASSIFIED_IMAGE = 1;
 
-    private static final String[] srcImageNames = {"dataImage", "classifiedImage0",
-        "classifiedImage1", "classifiedImage2", "classifiedImage3", "classifiedImage4"};
+    private static final String[] srcImageNames = {"dataImage"/*, "classifiedImage0",
+        "classifiedImage1", "classifiedImage2", "classifiedImage3", "classifiedImage4"*/};
 
-    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class, RenderedImage.class,
-        RenderedImage.class, RenderedImage.class, RenderedImage.class, RenderedImage.class}};
+    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class/*, RenderedImage.class,
+        RenderedImage.class, RenderedImage.class, RenderedImage.class, RenderedImage.class*/}};
 
-    static final int STATS_ARG = 0;
-    static final int BAND_ARG = 1;
-    static final int ROI_ARG = 2;
-    static final int RANGES_ARG = 3;
-    static final int RANGES_TYPE_ARG = 4;
-    static final int RANGE_LOCAL_STATS_ARG = 5;
-    static final int NODATA_RANGES_ARG = 6;
+    static final int CLASSIFIED_ARG = 0;
+    static final int STATS_ARG = 1;
+    static final int BAND_ARG = 2;
+    static final int ROI_ARG = 3;
+    static final int RANGES_ARG = 4;
+    static final int RANGES_TYPE_ARG = 5;
+    static final int RANGE_LOCAL_STATS_ARG = 6;
+    static final int NODATA_RANGES_ARG = 7;
+    static final int NODATA_CLASSIFIED_ARG = 8;
 
     private static final String[] paramNames = {
+        "classified",
         "stats", 
         "bands", 
         "roi", 
         "ranges", 
         "rangesType", 
         "rangeLocalStats", 
-        "noDataRanges"
+        "noDataRanges",
+        "noDataClassified"
     };
 
     private static final Class<?>[] paramClasses = {
+        RenderedImage[].class,
         Statistic[].class, 
         Integer[].class,
         javax.media.jai.ROI.class, 
         Collection.class, 
         Range.Type.class, 
         Boolean.class, 
-        Collection.class 
+        Collection.class,
+        Double[].class
     };
 
     private static final Object[] paramDefaults = {
+        null,
         NO_PARAMETER_DEFAULT,
         new Integer[]{Integer.valueOf(0)}, 
         (ROI) null,  
         (Collection) null, 
         Range.Type.UNDEFINED, 
         Boolean.FALSE, 
-        (Collection) null
+        (Collection) null,
+        null
     };
     
 
@@ -220,41 +228,51 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                 {"Version", "1.2.0"},
 
                 {
-                        "arg0Desc",
+                    "arg0Desc",
+                    String.format("%s - an array of RenderedImage representing the classified input"
+                            + "images", paramNames[CLASSIFIED_ARG])},
+                {
+                        "arg1Desc",
                         String.format("%s - an array of Statistic constants specifying the "
                                 + "statistics required", paramNames[STATS_ARG])},
 
                 {
-                        "arg1Desc",
+                        "arg2Desc",
                         String.format("%s (default %s) - the bands of the data image to process",
                                 paramNames[BAND_ARG], paramDefaults[BAND_ARG])},
 
                 {
-                        "arg2Desc",
+                        "arg3Desc",
                         String.format("%s (default ) - an optional ROI for masking the data image",
                                 paramNames[ROI_ARG], paramDefaults[ROI_ARG])},
 
                 {
-                        "arg3Desc",
+                        "arg4Desc",
                         String.format("%s (default %s) - an optional Collection of Ranges "
                                 + "that define dataImage values to include or exclude",
                                 paramNames[RANGES_ARG], paramDefaults[RANGES_ARG])},
 
                 {
-                        "arg4Desc",
+                        "arg5Desc",
                         String.format("%s (default %s) - whether to include or exclude provided ranges",
                             paramNames[RANGES_TYPE_ARG], paramDefaults[RANGES_TYPE_ARG])},
 
                 {
-                        "arg5Desc",
+                        "arg6Desc",
                         String.format("%s (default %s) - whether to calculate statistics separately "
                                 + "for ranges (when provided)",
                             paramNames[RANGE_LOCAL_STATS_ARG], paramDefaults[RANGE_LOCAL_STATS_ARG])},
                 {
-                        "arg6Desc",
+                        "arg7Desc",
                         String.format("%s (default %s) - an optional Collection of Ranges "
                             + "defining values to treat as NODATA",
                             paramNames[NODATA_RANGES_ARG], paramDefaults[NODATA_RANGES_ARG])},
+                {
+                    "arg8Desc",
+                    String.format("%s (default %s) - an optional Array of values "
+                        + "defining values to treat as NODATA from the classified raster inputs\n" 
+                        + "the i-th element of the array refers to the i-th classified raster source",
+                        paramNames[NODATA_CLASSIFIED_ARG], paramDefaults[NODATA_CLASSIFIED_ARG])},
 
         },
 
@@ -281,9 +299,19 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
     public boolean validateArguments( String modeName, ParameterBlock pb, StringBuffer msg ) {
         
         final int imageSources = pb.getNumSources();
-        if (imageSources == 0 || imageSources < 2) {
-            msg.append("ClassifiedStats operator takes at least 2 source images, the first one with data");
+        if (imageSources == 0) {
+            msg.append("ClassifiedStats operator takes 1 source image");
             return false;
+        }
+        
+        // CHECKING CLASSIFIED IMAGES
+        Object renderedObjects = pb.getObjectParameter(CLASSIFIED_ARG);
+        RenderedImage[] classifiedImages = null;
+        if (!(renderedObjects instanceof RenderedImage[])) {
+            msg.append(paramNames[CLASSIFIED_ARG]).append(" arg has to be of type RenderedImage[]");
+            return false;
+        } else {
+            classifiedImages = (RenderedImage[]) renderedObjects;
         }
 
         // CHECKING RANGES
@@ -398,11 +426,11 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             }
         }
 
-        // CHECKING CLASSIFIER IMAGE BOUNDS
-        if (imageSources >= 2) {
-            int numClassifiers = imageSources - 1;
+        // CHECKING CLASSIFIED IMAGE 
+        int numClassifiers = classifiedImages != null ? classifiedImages.length : 0;
+        if (numClassifiers != 0){
             for (int i = 0; i < numClassifiers; i++){
-                RenderedImage classifImage = pb.getRenderedSource(ClassifiedStatsDescriptor.DATA_IMAGE + i);
+                RenderedImage classifImage = classifiedImages[i];
                 final Rectangle classifiedBounds = new Rectangle(classifImage.getMinX(), classifImage.getMinY(), classifImage.getWidth(), classifImage.getHeight());
                 int dataType = classifImage.getSampleModel().getDataType();
                 boolean integralType = false;
@@ -419,9 +447,29 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                 if (classifiedBounds.width != dataBounds.width || classifiedBounds.height != dataBounds.height
                         || classifiedBounds.x != dataBounds.x || classifiedBounds.y != dataBounds.y){
                     msg.append("Data image bounds and classified raster bounds should match:\n "
-                            + "Data Image: " + dataBounds.toString() + "\n classifierImage[" + i + "]: " + classifiedBounds.toString());
+                            + "Data Image: " + dataBounds.toString() + "\n classifierImage[" + i + "]: " 
+                            + classifiedBounds.toString());
            
                     return false;
+                }
+            }
+        } else {
+            msg.append("At least one Classified input image should be specified");
+            return false;
+        }
+        
+        Object noDataClassifiedArg = pb.getObjectParameter(NODATA_CLASSIFIED_ARG);
+        Double[] noDataClassified = null;
+        if (noDataClassifiedArg != null){
+            if (!(noDataClassifiedArg instanceof Double[])) {
+            msg.append(paramNames[NODATA_CLASSIFIED_ARG]).append(" arg has to be of type Double[]");
+            return false;
+            } else {
+                noDataClassified = (Double[]) noDataClassifiedArg;
+                if (noDataClassified.length != numClassifiers){
+                    msg.append(paramNames[NODATA_CLASSIFIED_ARG]).append(" arg has to have the same " +
+                        "number of elements of " + paramNames[CLASSIFIED_ARG] + " = " + numClassifiers + 
+                        "whilst its actual size is " + noDataClassified.length);
                 }
             }
         }
