@@ -307,10 +307,10 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         final int minX = dataImage.getMinX();
         final int maxX = minX + width - 1;
         final int maxY = minY + height - 1;
-        final int minTileX = minX / tileWidth;
-        final int minTileY = minY / tileHeight;
-        final int maxTileX = maxX / tileWidth;
-        final int maxTileY = maxY / tileHeight;
+        final int minTileX = dataImage.getMinTileX();
+        final int minTileY = dataImage.getMinTileY();
+        final int maxTileX = minTileX+dataImage.getNumXTiles();
+        final int maxTileY = minTileY+dataImage.getNumYTiles();
         Integer[] key = new Integer[numClassified];
         // //
         //
@@ -433,10 +433,10 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         final int minX = dataImage.getMinX();
         final int maxX = minX + width - 1;
         final int maxY = minY + height - 1;
-        final int minTileX = minX / tileWidth;
-        final int minTileY = minY / tileHeight;
-        final int maxTileX = maxX / tileWidth;
-        final int maxTileY = maxY / tileHeight;
+        final int minTileX = dataImage.getMinTileX();
+        final int minTileY = dataImage.getMinTileY();
+        final int maxTileX = minTileX+dataImage.getNumXTiles();
+        final int maxTileY = minTileY+dataImage.getNumYTiles();
 
 
         // //
