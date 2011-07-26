@@ -107,7 +107,7 @@ public class GSClassifiedStatsTest {
             pb.setParameter("noDataRanges", noRanges);
 
             pb.setParameter("stats", new Statistic[] { Statistic.MIN, Statistic.MAX,
-                    Statistic.RANGE, Statistic.SUM });
+                    Statistic.RANGE, Statistic.MEAN, Statistic.SUM });
             pb.setParameter("bands", new Integer[] { 0 });
 
             RenderedOp op = JAI.create("ClassifiedStats", pb);
@@ -121,7 +121,7 @@ public class GSClassifiedStatsTest {
                 MultiKey key = it.next();
                 List<Result> rs = results.get(key);
                 for (Result r : rs) {
-                    System.out.println(r.toString() + " key:" + key);
+                    System.out.println(r.toString() + " class:" + key);
                 }
             }
 
@@ -214,7 +214,7 @@ public class GSClassifiedStatsTest {
                 MultiKey key = it.next();
                 List<Result> rs = results.get(key);
                 for (Result r : rs) {
-                    System.out.println(r.toString() + " key:" + key);
+                    System.out.println(r.toString() + " class:" + key);
                 }
             }
 

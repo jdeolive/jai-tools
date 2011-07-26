@@ -435,8 +435,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         final int maxY = minY + height - 1;
         final int minTileX = dataImage.getMinTileX();
         final int minTileY = dataImage.getMinTileY();
-        final int maxTileX = minTileX+dataImage.getNumXTiles();
-        final int maxTileY = minTileY+dataImage.getNumYTiles();
+        final int maxTileX = minTileX + dataImage.getNumXTiles();
+        final int maxTileY = minTileY + dataImage.getNumYTiles();
 
 
         // //
