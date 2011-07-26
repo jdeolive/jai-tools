@@ -1,5 +1,5 @@
 /* 
- *  Copyright (c) 2009-2010, Michael Bedward. All rights reserved. 
+ *  Copyright (c) 2009-2010, Daniele Romagnoli. All rights reserved. 
  *   
  *  Redistribution and use in source and binary forms, with or without modification, 
  *  are permitted provided that the following conditions are met: 
@@ -40,7 +40,7 @@ import org.jaitools.numeric.Statistic;
  * results.
  * 
  * @see ClassifiedStats
- * @author Michael Bedward
+ * @author Daniele Romagnoli
  */
 public class Result {
 
@@ -56,7 +56,7 @@ public class Result {
 
     /**
      * Create a new {@code Result} object. This is intended for use by the
-     * {@code ZonalStats} class rather than client code.
+     * {@code ClassifiedStats} class rather than client code.
      * 
      * @param imageBand data image band
      * @param stat the statistic to which this result pertains

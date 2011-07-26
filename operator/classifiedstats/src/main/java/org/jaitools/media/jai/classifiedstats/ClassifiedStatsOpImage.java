@@ -50,9 +50,7 @@ import org.jaitools.numeric.StreamingSampleStats;
 
 
 /**
- * Calculates image summary statistics for a data image within zones defined by
- * a integral valued zone image. If a zone image is not provided all data image
- * pixels are treated as being in the same zone (zone 0).
+ * Calculates image summary statistics for a data image.
  *
  * @see ClassifiedStatsDescriptor Description of the algorithm and example
  *
@@ -170,7 +168,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      * Delegates calculation of statistics to either {@linkplain #compileRangeStatistics()}
      * or {@linkplain #compileClassifiedStatistics()}.
      *
-     * @return the results as a new instance of {@code ZonalStats}
+     * @return the results as a new instance of {@code ClassifiedStats}
      */
     private synchronized ClassifiedStats compileStatistics() {
         if (!rangeLocalStats) {
@@ -181,12 +179,12 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     }
 
     /**
-     * Called by {@link #compileZonalStatistics()} to lazily create a
-     * {@link StreamingSampleStats} object for each zone as it is encountered
-     * in the zone image. The new object is added to the provided {@code resultsPerBand}
+     * Called by {@link #compileClassifiedStatistics()} to lazily create a
+     * {@link StreamingSampleStats} object for each classifier. 
+     * The new object is added to the provided {@code resultsPerBand}
      * {@code Map}.
      * 
-     * @param resultsPerBand {@code Map} of results by zone id
+     * @param resultsPerBand {@code Map} of results by classifier
      * @param classifier
      * 
      * @return a new {@code StreamingSampleStats} object
@@ -219,12 +217,12 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     }
 
     /**
-     * Used to calculate statistics when a zone image was provided.
+     * Used to calculate statistics against classified rasters.
      *
-     * @return the results as a {@code ZonalStats} instance
+     * @return the results as a {@code ClassifiedStats} instance
      */
     private ClassifiedStats compileClassifiedStatistics() {
-
+        ClassifiedStats classifiedStats = new ClassifiedStats();
         Map<Integer, Map<MultiKey, StreamingSampleStats>> results = CollectionFactory.sortedMap();
         for( Integer srcBand : srcBands) {
             Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
@@ -274,7 +272,6 @@ public class ClassifiedStatsOpImage extends NullOpImage {
 
         } while( !(nextLines(classIter) && dataIter.nextLineDone()));
 
-        // collect all found zones
         Set<MultiKey> classifKeys = new HashSet<MultiKey>();
         for( Integer band : srcBands ) {
             Set<MultiKey> classifiedSetForBand = results.get(band).keySet();
@@ -282,7 +279,6 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         }
 
         // set the results
-        ClassifiedStats classifiedStats = new ClassifiedStats();
         for( Integer band : srcBands ) {
             for( MultiKey classifier : classifKeys) {
                 classifiedStats.setResults(band, classifier, results.get(band).get(classifier));
@@ -425,7 +421,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     /**
      * Get the specified property.
      * <p>
-     * Use this method to retrieve the calculated statistics as a map of {@code ZonalStats} per band
+     * Use this method to retrieve the calculated statistics as a map of {@code ClassifiedStats} per band
      * by setting {@code name} to {@linkplain ClassifiedStatsDescriptor#CLASSIFIED_STATS_PROPERTY}.
      *
      * @param name property name
@@ -481,74 +477,4 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         names[k] = ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY;
         return names;
     }
-
-    
-    
-//  /**
-//  * Used to calculate statistics when no zone image was provided.
-//  *
-//  * @return the results as a {@code ZonalStats} instance
-//  */
-// private ClassifiedStats compileClassifiedStatistics() {
-//     buildZoneList();
-//     Integer zoneID = zones.first();
-//
-//     // create the stats
-//     final StreamingSampleStats sampleStatsPerBand[] = new StreamingSampleStats[srcBands.length];
-//     for (int index = 0; index < srcBands.length; index++) {
-//         final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
-//         for (Range<Double> r : ranges) {
-//             sampleStats.addRange(r);
-//         }
-//         for (Range<Double> r : noDataRanges) {
-//             sampleStats.addNoDataRange(r);
-//         }
-//         sampleStats.setStatistics(stats);
-//         sampleStatsPerBand[index] = sampleStats;
-//     }
-//
-//     final double[] sampleValues = new double[dataImage.getSampleModel().getNumBands()];
-//     RectIter dataIter = RectIterFactory.create(dataImage, null);
-//     int y = dataImage.getMinY();
-//     do {
-//         int x = dataImage.getMinX();
-//         do {
-//             if (roi == null || roi.contains(x, y)) {
-//                 dataIter.getPixel(sampleValues);
-//                 for (int index = 0; index < srcBands.length; index++) {
-//                     final double value = sampleValues[srcBands[index]];
-//                     sampleStatsPerBand[index].offer(value);
-//                 }
-//             }
-//             x++;
-//         } while (!dataIter.nextPixelDone() );
-//
-//         dataIter.startPixels();
-//         y++;
-//
-//     } while (!dataIter.nextLineDone() );
-//
-//     // get the results
-//     final ClassifiedStats zs = new ClassifiedStats();
-//     for (int index = 0; index < srcBands.length; index++) {
-//         final StreamingSampleStats sampleStats = sampleStatsPerBand[index];
-//         List<Range> inclRanges = null;
-//         if (ranges != null && !ranges.isEmpty()) {
-//             switch (rangesType) {
-//                 case INCLUDE:
-//                     inclRanges = CollectionFactory.list();
-//                     inclRanges.addAll(ranges);
-//                     break;
-//                 case EXCLUDE:
-//                     inclRanges = CollectionFactory.list();
-//                     List<Range<Double>> incRanges = RangeUtils.createComplement(RangeUtils.sort(ranges));
-//                     inclRanges.addAll(incRanges);
-//                     break;
-//             }
-//         }
-//         zs.setResults(srcBands[index], zoneID, sampleStats, inclRanges);
-//     }
-//     return zs;
-// }
-//
 }

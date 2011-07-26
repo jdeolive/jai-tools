@@ -59,18 +59,8 @@ import org.jaitools.numeric.Statistic;
  * {@link org.jaitools.numeric.Statistic#MEDIAN}, for which the
  * {@link org.jaitools.numeric.Statistic#APPROX_MEDIAN} alternative is provided.
  * <p>
- * Note that the source names for this operator are "dataImage" and "zoneImage"
+ * Note that the source names for this operator are "dataImage" and "classifiedImageX"
  * rather than the more typical JAI names "source0", "source1".
- * <p>
- * If a zone image is provided it must be of integral data type. By default, an
- * identity mapping is used between zone and data images, ie. zone image pixel at
- * <i>x, y</i> is mapped to the data image pixel at <i>x, y</i>. Any data image
- * pixels that do not have a corresponding zone image pixel are ignored, thus the
- * zone image bounds can be a subset of the data image bounds.
- * <p>
- * The user can also provide an {@link AffineTransform} to map data image
- * positions to zone image positions. For example, multiple data image pixels
- * could be mapped to a single zone image pixel.
  * <p>
  * The range of data image values that contribute to the analysis can be constrained
  * in two ways: with the "ranges" parameter and the "noDataRanges" parameter.
@@ -89,11 +79,13 @@ import org.jaitools.numeric.Statistic;
  * Example of use...
  * <pre><code>
  * RenderedImage myData = ...
- * RenderedImage myZones = ...
+ * RenderedImage myClassifiedImage0 = ...
+ * RenderedImage myClassifiedImage1 = ...
  *
  * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
  * pb.setSource("dataImage", myData);
- * pb.setSource("zoneImage", myZones);
+ * pb.setSource("classifiedImage0", myClassifiedImage0);
+ * pb.setSource("classifiedImage1", myClassifiedImage1);
  *
  * Statistic[] stats = {
  *     Statistic.MIN,
@@ -115,101 +107,9 @@ import org.jaitools.numeric.Statistic;
  * </code></pre>
  *
  * The {@code ClassifiedStats} object returned by the {@code getProperty} method above allows
- * you to examine results by image band, zone and statistic as shown here...
- * <pre><code>
- * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
+ * you to examine results by image band, classifier key, statistic, range.
  *
- * // print all results for band 0
- * for (Result r : stats.band(0).results()) {
- *     System.out.println(r);
- * }
  *
- * // print all result for band 2, zone 5
- * for (Result r : stats.band(2).zone(5).results()) {
- *     System.out.println(r);
- * }
- *
- * // print MEAN values for all zones in band 0
- * for (Result r : stats.band(0).statistics(Statistic.MEAN).results()) {
- *     System.out.println(r);
- * }
- * </code></pre>
- *
- * Using the operator to calculate statistics for an area within the data image...
- * <pre><code>
- * RenderedImage myData = ...
- * Rectangle areaBounds = ...
- * ROI roi = new ROIShape(areaBounds);
- *
- * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
- * pb.setSource("dataImage", myData);
- * pb.setParameter("roi", roi);
- *
- * pb.setParameter("stats", someStats);
- * RenderedOp op = JAI.create("ClassifiedStats", pb);
- *
- * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
- *
- * // print results to console
- * for (Result r : stats.results()) {
- *     System.out.println(r);
- * }
- *
- * </code></pre>
- *
- * Using an {@code AffineTransform} to map data image position to zone image position...
- * <pre><code>
- * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
- * pb.setSource("dataImage", myDataImage);
- * pb.setSource("zoneImage", myZoneImage);
- * pb.setParameter("stats", someStats);
- *
- * AffineTransform tr = new AffineTransform( ... );
- * pb.setParameter("zoneTransform", tr);
- * </code></pre>
- *
- * Asking for statistics on multiple bands.
- * <p>
- * By default the stats are calculated on a single default 0 index band. It
- * is possible also to request calculations on multiple bands, by passing the
- * band indexes as a parameter.
- * <pre><code>
- * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
- * pb.setSource("dataImage", myDataImage);
- * pb.setSource("zoneImage", myZoneImage);
- * pb.setParameter("stats", someStats);
- *
- * // ask for stats on band 0 and 2 of the image
- * pb.setParameter("bands", new Integer[]{0, 2});
- * RenderedOp op = JAI.create("ClassifiedStats", pb);
- *
- * // get the results
- * ClassifiedStats> stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
- *
- * // results by band
- * List<Result> resultsBand0 = stats.band(0).results;
- * List<Result> resultsBand2 = stats.band(2).results;
- * </code></pre>
- *
- * Excluding data values from the analysis with the "noDataRanges" parameter:
- * <pre><code>
- * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
- * ...
- *
- * // exclude values between -5 and 5 inclusive
- * List&lt;Range&lt;Double>> excludeList = CollectionFactory.newList();
- * excludeList.add(Range.create(-5, true, 5, true));
- * pb.setParameter("noDataRanges", excludeList);
- *
- * // after we run the operator and get the results we can examine
- * // how many sample values were included in the calculation
- * List<Result> results = zonalStats.results();
- * for (Result r : results) {
- *     int numUsed = r.getNumAccepted();
- *     int numExcluded = r.getNumOffered() - numUsed;
- *     ...
- * }
- * </code></pre>
  *
  * <b>Parameters</b>
  * <table border="1">
@@ -224,11 +124,6 @@ import org.jaitools.numeric.Statistic;
  * </tr>
  * <tr>
  * <td>roi</td><td>ROI</td><td>An optional ROI to constrain sampling</td><td>null</td>
- * </tr>
- * <tr>
- * <td>zoneTransform</td><td>AffineTransform</td>
- * <td>Maps data image positions to zone image positions</td>
- * <td>null (identity transform)</td>
  * </tr>
  * <tr>
  * <td>ranges</td><td>Collection&lt;Range></td><td>Ranges of values to include or exclude</td><td>null (include all data values)</td>
@@ -256,7 +151,6 @@ import org.jaitools.numeric.Statistic;
  * @see org.jaitools.numeric.StreamingSampleStats
  * @see ClassifiedStats
  *
- * @author Michael Bedward
  * @author Daniele Romagnoli, GeoSolutions S.A.S.
  * @since 1.2
  */
@@ -270,9 +164,11 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
     static final int DATA_IMAGE = 0;
     static final int CLASSIFIED_IMAGE = 1;
 
-    private static final String[] srcImageNames = {"dataImage", "classifierImages"};
+    private static final String[] srcImageNames = {"dataImage", "classifiedImage0",
+        "classifiedImage1", "classifiedImage2", "classifiedImage3", "classifiedImage4"};
 
-    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class, RenderedImage.class}};
+    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class, RenderedImage.class,
+        RenderedImage.class, RenderedImage.class, RenderedImage.class, RenderedImage.class}};
 
     static final int STATS_ARG = 0;
     static final int BAND_ARG = 1;

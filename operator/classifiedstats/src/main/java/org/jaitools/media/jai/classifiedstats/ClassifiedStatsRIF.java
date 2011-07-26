@@ -60,7 +60,7 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
      * Create a new instance of ClassifiedStatsOpImage in the rendered layer.
      *
      * @param paramBlock specifies the source image,
-     * and the following parameters: "stats", "band", "roi", "zoneTransform", "ranges",
+     * and the following parameters: "stats", "band", "roi", "ranges",
      * "rangesType", "rangeLocalStats"
      *
      * @param renderHints optional RenderingHints object

@@ -25,7 +25,6 @@
 
 package org.jaitools.media.jai.classifiedstats;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -45,67 +44,6 @@ import org.jaitools.numeric.StreamingSampleStats;
  * An instance of this class is stored as a property of the destination
  * image.
  * <p>
- * The result for each combination of data image band, zone image integer zone (if
- * provided) and requested statistic is stored as a {@code Result} object.
- * The most basic usage is to iterate through the results as follows...
- * <pre><code>
- * RenderedOp op = JAI.create("zonalstats", myParamBlock);
- * ClassifiedStats allStats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
- * for (Result r : allStats.results()) {
- *     System.out.prinln(r);
- * }
- * </code></pre>
- * 
- * Alternatively, the attributes of {@code Result} objects can be retrieved selectively...
- * <pre><code>
- * ClassifiedStats allStats = ...
- * for (Result r : allStats.results()) {
- *     if (r.getStatistic() == Statistic.MEAN) {
- *         System.out.printf("%4d %4d %8.4f\n", 
- *             r.getImageBand(), r.getZone(), r.getValue());
- *     }
- * }
- * </code></pre>
- * 
- * For most uses it may be easier to use the chaining methods provided by {@code ClassifiedStats}
- * to select the subset of results required...
- * <pre><code>
- * ClassifiedStats allStats = ...
- *
- * // Get results for a given band
- * int bandIndex = ...
- * List<Result> bandResults = allStats.band(bandIndex).results();
- *
- *
- * // Get Statistic.MEAN values for the specified band and zone
- * List<Result> subsetResults = allStats.band(b).zone(z).statistic(Statistic.MEAN).results();
- *
- *
- * // Impress your friends with pretty printing !
- * Statistic[] statistics = {
- *           Statistic.MIN,
- *           Statistic.MAX,
- *           Statistic.MEDIAN,
- *           Statistic.APPROX_MEDIAN,
- *           Statistic.SDEV
- *       };
- *
- * System.out.println("                               exact    approx");
- * System.out.println(" band zone      min      max   median   median     sdev");
- * System.out.println("-----------------------------------------------------------");
- *
- * for (int b : allStats.getImageBands()) {
- *     for (int z : zs.getZones()) {
- *         System.out.printf(" %4d %4d", b, z);
- *         ClassifiedStats subset = zs.band(b).zone(z);
- *         for (Statistic s : statistics) {
- *             System.out.printf(" %8.4f", zoneSubset.statistic(s).results().get(0).getValue());
- *         }
- *         System.out.println();
- *     }
- * }
- *
- * </code></pre>
  *
  * @see Result
  * @see ClassifiedStatsDescriptor
@@ -117,8 +55,6 @@ public class ClassifiedStats {
 
     private Map<MultiKey, List<Result>> results;
     
-//    private List<Result> results;
-
     /**
      * Constructor. Package-private; called by ClassifiedStatsOpImage.
      */
@@ -165,7 +101,7 @@ public class ClassifiedStats {
     }
 
     /**
-     * Store the results for the given zone. Package-private method used by
+     * Store the results for the given classifierKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
     void setResults(int band, MultiKey classifierKey, StreamingSampleStats stats, List<Range> ranges) {
