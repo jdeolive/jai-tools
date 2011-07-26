@@ -169,7 +169,10 @@ public class ClassifiedStats {
      * {@code ClassifiedStatsOpImage}.
      */
     void setResults(int band, MultiKey classifierKey, StreamingSampleStats stats, List<Range> ranges) {
-        List<Result> rs = CollectionFactory.list();
+        List<Result> rs = results.get(classifierKey);
+        if (rs == null) {
+            rs = CollectionFactory.list();    
+        }
         for (Statistic s : stats.getStatistics()) {
             Result r = new Result(band, s, ranges,
                     stats.getStatisticValue(s),

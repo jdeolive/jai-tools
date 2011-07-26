@@ -25,8 +25,9 @@
 
 package org.jaitools.media.jai.classifiedstats;
 
-import java.io.File;
+import java.awt.image.RenderedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +41,9 @@ import javax.media.jai.ParameterBlockJAI;
 import javax.media.jai.RenderedOp;
 
 import org.apache.commons.collections.keyvalue.MultiKey;
+import org.jaitools.CollectionFactory;
+import org.jaitools.numeric.Range;
 import org.jaitools.numeric.Statistic;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -53,20 +55,26 @@ import org.junit.Test;
 public class ClassifiedStatsTest {
 
     private static final Logger LOGGER = Logger.getLogger("ClassifiedStatsTest");
-
-    private static final double EPS = 1.0e-6;
+    
+    
 
     @Test
-    @Ignore
+//    @Ignore
     public void testClassification() throws IOException {
         if (LOGGER.isLoggable(Level.INFO)) {
     		LOGGER.info("   test classification");
         }
-
+        InputStream sample = ClassifiedStatsTest.class.getResourceAsStream("sample.tif");
+        RenderedImage sampleImage = ImageIO.read(sample);
+        InputStream classifier1 = ClassifiedStatsTest.class.getResourceAsStream("mask1.tif");
+        RenderedImage classifiedImage = ImageIO.read(classifier1);
+        InputStream classifiedStripes = ClassifiedStatsTest.class.getResourceAsStream("5stripes.tif");
+        RenderedImage stripedImage = ImageIO.read(classifiedStripes);
         ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
-        pb.addSource(ImageIO.read(new File("d:\\image.tif")));
-        pb.addSource(ImageIO.read(new File("d:\\mask1.tif")));
-        pb.addSource(ImageIO.read(new File("d:\\mask2.tif")));
+        pb.addSource(sampleImage);
+        pb.addSource(stripedImage);
+        pb.addSource(classifiedImage);
+
         pb.setParameter("stats", new Statistic[]{Statistic.MIN, Statistic.MAX, Statistic.RANGE, Statistic.SUM});
         pb.setParameter("bands", new Integer[]{0});
 
@@ -83,6 +91,60 @@ public class ClassifiedStatsTest {
                 System.out.println(r.toString() + " key:" + key);
             }
         }
+        
+        System.out.println("Getting Max from the result coming from the 2nd stripe (The first classified raster, with value = 1), " +
+        		"\n and the second classified raster with value = 50");
+        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(0));
+        
+//        System.out.println(classifiedResult.get(0).getStatistic());
+        
+    }
+    
+    @Test
+//    @Ignore
+    public void testClassificationWithLocalRanges() throws IOException {
+        if (LOGGER.isLoggable(Level.INFO)) {
+                LOGGER.info("   test classificationWithLocalRanges");
+        }
+
+        ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
+        InputStream sample = ClassifiedStatsTest.class.getResourceAsStream("sample.tif");
+        RenderedImage sampleImage = ImageIO.read(sample);
+        InputStream classifier1 = ClassifiedStatsTest.class.getResourceAsStream("mask1.tif");
+        RenderedImage classifiedImage = ImageIO.read(classifier1);
+        InputStream classifiedStripes = ClassifiedStatsTest.class.getResourceAsStream("5stripes.tif");
+        RenderedImage stripedImage = ImageIO.read(classifiedStripes);
+        pb.addSource(sampleImage);
+        pb.addSource(stripedImage);
+        pb.addSource(classifiedImage);
+        pb.setParameter("stats", new Statistic[]{Statistic.MIN, Statistic.MAX, Statistic.RANGE, Statistic.SUM});
+        pb.setParameter("bands", new Integer[]{0});
+        
+        List<Range<Double>> ranges = CollectionFactory.list();
+        ranges.add(Range.create(0d, true, 100d , true));
+        ranges.add(Range.create(101d, true, 255d , true));
+        pb.setParameter("ranges", ranges);
+        pb.setParameter("rangesType", Range.Type.INCLUDE);
+        
+        pb.setParameter("rangeLocalStats", true);
+
+        RenderedOp op = JAI.create("ClassifiedStats", pb);
+        ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
+
+        Map<MultiKey, List<Result>> results = stats.results();
+        Set<MultiKey> km = results.keySet();
+        Iterator<MultiKey> it = km.iterator();
+        while (it.hasNext()) {
+            MultiKey key = it.next(); 
+            List<Result> rs = results.get(key);
+            for (Result r: rs){
+                System.out.println(r.toString() + " classifiers:" + key);
+            }
+        }
+        System.out.println("Getting Max from the result coming from the 2nd stripe (The first classified raster, with value = 1), " +
+        "\n and the second classified raster with value = 50, for the first and second range");
+        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(0));
+        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(1));
     }
 
 }

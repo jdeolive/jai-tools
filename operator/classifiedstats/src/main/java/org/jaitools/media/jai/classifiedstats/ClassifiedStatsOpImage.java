@@ -191,11 +191,25 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      * 
      * @return a new {@code StreamingSampleStats} object
      */
-    protected StreamingSampleStats setupZoneStats(Map<MultiKey, StreamingSampleStats> resultsPerBand, MultiKey classifier) {
+    protected StreamingSampleStats setupStats(Map<MultiKey, StreamingSampleStats> resultsPerBand, MultiKey classifier) {
         StreamingSampleStats sampleStats = new StreamingSampleStats(Range.Type.EXCLUDE);
         for (Range<Double> r : ranges) {
             sampleStats.addRange(r);
         }
+        for (Range<Double> r : noDataRanges) {
+            sampleStats.addNoDataRange(r);
+        }
+        sampleStats.setStatistics(stats);
+        resultsPerBand.put(classifier, sampleStats);
+        return sampleStats;
+    }
+    
+    
+    protected StreamingSampleStats setupStats(Map<MultiKey, StreamingSampleStats> resultsPerBand, MultiKey classifier, 
+            Range.Type rangesType, Range<Double> range, List<Range<Double>> noDataRanges, Statistic[] stats) {
+        
+        final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
+        sampleStats.addRange(range);
         for (Range<Double> r : noDataRanges) {
             sampleStats.addNoDataRange(r);
         }
@@ -245,7 +259,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                         MultiKey mk = new MultiKey(key);
                         StreamingSampleStats sss = resultPerBand.get(mk);
                         if (sss == null) {
-                            sss = setupZoneStats(resultPerBand, mk);
+                            sss = setupStats(resultPerBand, mk);
                         }
                         sss.offer(sampleValues[band]);
                     }
@@ -259,8 +273,6 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             y++;
 
         } while( !(nextLines(classIter) && dataIter.nextLineDone()));
-
-
 
         // collect all found zones
         Set<MultiKey> classifKeys = new HashSet<MultiKey>();
@@ -280,73 +292,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         return classifiedStats;
     }
 
-//    /**
-//     * Used to calculate statistics when no zone image was provided.
-//     *
-//     * @return the results as a {@code ZonalStats} instance
-//     */
-//    private ClassifiedStats compileClassifiedStatistics() {
-//        buildZoneList();
-//        Integer zoneID = zones.first();
-//
-//        // create the stats
-//        final StreamingSampleStats sampleStatsPerBand[] = new StreamingSampleStats[srcBands.length];
-//        for (int index = 0; index < srcBands.length; index++) {
-//            final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
-//            for (Range<Double> r : ranges) {
-//                sampleStats.addRange(r);
-//            }
-//            for (Range<Double> r : noDataRanges) {
-//                sampleStats.addNoDataRange(r);
-//            }
-//            sampleStats.setStatistics(stats);
-//            sampleStatsPerBand[index] = sampleStats;
-//        }
-//
-//        final double[] sampleValues = new double[dataImage.getSampleModel().getNumBands()];
-//        RectIter dataIter = RectIterFactory.create(dataImage, null);
-//        int y = dataImage.getMinY();
-//        do {
-//            int x = dataImage.getMinX();
-//            do {
-//                if (roi == null || roi.contains(x, y)) {
-//                    dataIter.getPixel(sampleValues);
-//                    for (int index = 0; index < srcBands.length; index++) {
-//                        final double value = sampleValues[srcBands[index]];
-//                        sampleStatsPerBand[index].offer(value);
-//                    }
-//                }
-//                x++;
-//            } while (!dataIter.nextPixelDone() );
-//
-//            dataIter.startPixels();
-//            y++;
-//
-//        } while (!dataIter.nextLineDone() );
-//
-//        // get the results
-//        final ClassifiedStats zs = new ClassifiedStats();
-//        for (int index = 0; index < srcBands.length; index++) {
-//            final StreamingSampleStats sampleStats = sampleStatsPerBand[index];
-//            List<Range> inclRanges = null;
-//            if (ranges != null && !ranges.isEmpty()) {
-//                switch (rangesType) {
-//                    case INCLUDE:
-//                        inclRanges = CollectionFactory.list();
-//                        inclRanges.addAll(ranges);
-//                        break;
-//                    case EXCLUDE:
-//                        inclRanges = CollectionFactory.list();
-//                        List<Range<Double>> incRanges = RangeUtils.createComplement(RangeUtils.sort(ranges));
-//                        inclRanges.addAll(incRanges);
-//                        break;
-//                }
-//            }
-//            zs.setResults(srcBands[index], zoneID, sampleStats, inclRanges);
-//        }
-//        return zs;
-//    }
-//
+
     /**
      * Used to calculate statistics when range local statistics are required.
      *
@@ -381,15 +327,19 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         for (Range<Double> range : localRanges) {
             Map<Integer, Map<MultiKey, StreamingSampleStats>> results = CollectionFactory.sortedMap();
             // create the stats
-            final StreamingSampleStats sampleStatsPerBand[] = new StreamingSampleStats[srcBands.length];
+//            final StreamingSampleStats sampleStatsPerBand[] = new StreamingSampleStats[srcBands.length];
             for (int index = 0; index < srcBands.length; index++) {
-                final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
-                sampleStats.addRange(range);
-                for (Range<Double> noDataRange : noDataRanges) {
-                    sampleStats.addNoDataRange(noDataRange);
-                }
-                sampleStats.setStatistics(stats);
-                sampleStatsPerBand[index] = sampleStats;
+                    Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
+                    results.put(index, resultsPerBand);
+                
+//                final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
+//                sampleStats.addRange(range);
+//                for (Range<Double> noDataRange : noDataRanges) {
+//                    sampleStats.addNoDataRange(noDataRange);
+//                }
+//                sampleStats.setStatistics(stats);
+//                sampleStatsPerBand[index] = sampleStats;
+
             }
 
             for (int i = 0; i <classifiers; i++){
@@ -416,7 +366,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                     MultiKey mk = new MultiKey(key);
                                     StreamingSampleStats sss = resultPerBand.get(mk);
                                     if (sss == null) {
-                                        sss = setupZoneStats(resultPerBand, mk);
+                                        sss = setupStats(resultPerBand, mk, rangesType, range, noDataRanges, stats);
                                     }
                                     sss.offer(sampleValues[band]);
                                 }
@@ -446,13 +396,12 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                 
             // get the results
             for (int index = 0; index < srcBands.length; index++) {
-                StreamingSampleStats sampleStats = sampleStatsPerBand[index];
+//                StreamingSampleStats sampleStats = sampleStatsPerBand[index];
                 List<Range> resultRanges = CollectionFactory.list();
                 resultRanges.add(range);
                 for( MultiKey classifier : classifKeys) {
-                    classifiedStats.setResults(srcBands[index], classifier, results.get(index).get(classifier), sampleStats, resultRanges);
+                    classifiedStats.setResults(srcBands[index], classifier, results.get(index).get(classifier), resultRanges);
                 }
-                ;
             }
         }
 
@@ -533,4 +482,73 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         return names;
     }
 
+    
+    
+//  /**
+//  * Used to calculate statistics when no zone image was provided.
+//  *
+//  * @return the results as a {@code ZonalStats} instance
+//  */
+// private ClassifiedStats compileClassifiedStatistics() {
+//     buildZoneList();
+//     Integer zoneID = zones.first();
+//
+//     // create the stats
+//     final StreamingSampleStats sampleStatsPerBand[] = new StreamingSampleStats[srcBands.length];
+//     for (int index = 0; index < srcBands.length; index++) {
+//         final StreamingSampleStats sampleStats = new StreamingSampleStats(rangesType);
+//         for (Range<Double> r : ranges) {
+//             sampleStats.addRange(r);
+//         }
+//         for (Range<Double> r : noDataRanges) {
+//             sampleStats.addNoDataRange(r);
+//         }
+//         sampleStats.setStatistics(stats);
+//         sampleStatsPerBand[index] = sampleStats;
+//     }
+//
+//     final double[] sampleValues = new double[dataImage.getSampleModel().getNumBands()];
+//     RectIter dataIter = RectIterFactory.create(dataImage, null);
+//     int y = dataImage.getMinY();
+//     do {
+//         int x = dataImage.getMinX();
+//         do {
+//             if (roi == null || roi.contains(x, y)) {
+//                 dataIter.getPixel(sampleValues);
+//                 for (int index = 0; index < srcBands.length; index++) {
+//                     final double value = sampleValues[srcBands[index]];
+//                     sampleStatsPerBand[index].offer(value);
+//                 }
+//             }
+//             x++;
+//         } while (!dataIter.nextPixelDone() );
+//
+//         dataIter.startPixels();
+//         y++;
+//
+//     } while (!dataIter.nextLineDone() );
+//
+//     // get the results
+//     final ClassifiedStats zs = new ClassifiedStats();
+//     for (int index = 0; index < srcBands.length; index++) {
+//         final StreamingSampleStats sampleStats = sampleStatsPerBand[index];
+//         List<Range> inclRanges = null;
+//         if (ranges != null && !ranges.isEmpty()) {
+//             switch (rangesType) {
+//                 case INCLUDE:
+//                     inclRanges = CollectionFactory.list();
+//                     inclRanges.addAll(ranges);
+//                     break;
+//                 case EXCLUDE:
+//                     inclRanges = CollectionFactory.list();
+//                     List<Range<Double>> incRanges = RangeUtils.createComplement(RangeUtils.sort(ranges));
+//                     inclRanges.addAll(incRanges);
+//                     break;
+//             }
+//         }
+//         zs.setResults(srcBands[index], zoneID, sampleStats, inclRanges);
+//     }
+//     return zs;
+// }
+//
 }

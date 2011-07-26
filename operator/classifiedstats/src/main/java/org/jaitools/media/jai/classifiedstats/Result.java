@@ -172,7 +172,7 @@ public class Result {
     @Override
     public String toString() {
         String rangess = ranges != null && !ranges.isEmpty() ? ranges.toString() : "";
-        return String.format("band %d %s: %.4f N=%d (%d - ND:%d - NaN:%d) %s",
+        return String.format("band %d %s: %.4f Naccepted=%d (offered:%d - NoData:%d - NaN:%d) %s",
                 imageBand, stat, value, numAccepted, numOffered, numNoData, numNaN, rangess);
     }
 
