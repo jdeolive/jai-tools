@@ -70,7 +70,7 @@ public class GSClassifiedStatsTest {
         layout.setTileHeight(512);
         layout.setTileWidth(512);
         hints = new RenderingHints(JAI.KEY_IMAGE_LAYOUT, layout);
-        JAI.getDefaultInstance().getTileCache().setMemoryCapacity(1024 * 1024 * 256);
+        JAI.getDefaultInstance().getTileCache().setMemoryCapacity(1024 * 1024 * 512);
     }
 
     private static final Logger LOGGER = Logger.getLogger("GSClassifiedStatsTest");
@@ -78,6 +78,7 @@ public class GSClassifiedStatsTest {
     @Test
     @Ignore
     public void testClassificationOnMeasure() throws IOException {
+//        long start = System.nanoTime();
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info(" test classification on measured data");
         }
@@ -100,14 +101,13 @@ public class GSClassifiedStatsTest {
 
             ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
             pb.addSource(sampleImage);
-            pb.setParameter("classified", new RenderedImage[] { gaulImage });
-            pb.setParameter("noDataClassified", new Double[] { -32768d });
+            pb.setParameter("classifiers", new RenderedImage[] { gaulImage });
+            pb.setParameter("noDataClassifiers", new Double[] { -32768d });
             List<Range<Double>> noRanges = CollectionFactory.list();
             noRanges.add(Range.create(-9.0d, null));
             pb.setParameter("noDataRanges", noRanges);
 
-            pb.setParameter("stats", new Statistic[] { Statistic.MIN, Statistic.MAX,
-                    Statistic.RANGE, Statistic.MEAN, Statistic.SUM });
+            pb.setParameter("stats", new Statistic[] { Statistic.SUM });
             pb.setParameter("bands", new Integer[] { 0 });
 
             RenderedOp op = JAI.create("ClassifiedStats", pb);
@@ -159,11 +159,14 @@ public class GSClassifiedStatsTest {
                 }
             }
         }
+//        long end = System.nanoTime();
+//        System.out.println("time: " + (end - start)/1000000 );
     }
 
     @Test
     @Ignore
     public void testClassificationOnArea() throws IOException {
+//        long start = System.nanoTime();
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info(" test classification on Area");
         }
@@ -194,8 +197,8 @@ public class GSClassifiedStatsTest {
 
             ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
             pb.addSource(sampleImage);
-            pb.setParameter("classified", new RenderedImage[] { gaulImage, faoImage });
-            pb.setParameter("noDataClassified", new Double[] { -32768d, 0d });
+            pb.setParameter("classifiers", new RenderedImage[] { gaulImage, faoImage });
+            pb.setParameter("noDataClassifiers", new Double[] { -32768d, 0d });
             List<Range<Double>> noRanges = CollectionFactory.list();
             noRanges.add(Range.create(-9.0d, null));
             pb.setParameter("noDataRanges", noRanges);
@@ -268,5 +271,8 @@ public class GSClassifiedStatsTest {
                 }
             }
         }
+//        long end = System.nanoTime();
+//        System.out.println("time: " + (end - start)/1000000 );
     }
+    
 }
