@@ -30,12 +30,16 @@ import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.media.jai.OperationDescriptorImpl;
 import javax.media.jai.ROI;
 import javax.media.jai.registry.RenderedRegistryMode;
 
+import org.apache.commons.collections.keyvalue.MultiKey;
 import org.jaitools.numeric.Range;
 import org.jaitools.numeric.RangeComparator;
 import org.jaitools.numeric.RangeUtils;
@@ -98,8 +102,15 @@ import org.jaitools.numeric.Statistic;
  * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
  *
  * // print results to console
- * for (Result r : stats.results()) {
- *     System.out.println(r);
+ * Map<MultiKey, List<Result>> results = stats.results();
+ * Set<MultiKey> multik = results.keySet();
+ * Iterator<MultiKey> it = multik.iterator();
+ * while (it.hasNext()) {
+ *      MultiKey key = it.next(); 
+ *      List<Result> rs = results.get(key);
+ *      for (Result r: rs){
+ *              System.out.println(r.toString());
+ *      }
  * }
  * </code></pre>
  *
@@ -112,6 +123,11 @@ import org.jaitools.numeric.Statistic;
  * <table border="1">
  * <tr>
  * <th>Name</th><th>Type</th><th>Description</th><th>Default value</th>
+ * </tr>
+ * <tr>
+ * <td>classifiers</td><td>RenderedImage[]</td>
+ * <td>classifier images to be used in computations</td>
+ * <td>NO DEFAULT although this parameter is mandatory</td>
  * </tr>
  * <tr>
  * <td>stats</td><td>Statistic[]</td><td>Statistics to calculate</td><td>NO DEFAULT</td>
@@ -139,6 +155,17 @@ import org.jaitools.numeric.Statistic;
  * <tr>
  * <td>noDataRanges</td><td>Collection&lt;Range></td>
  * <td>Ranges of values to treat specifically as NODATA
+ * </td><td>null (no NODATA values defined)</td>
+ * </tr>
+ * <tr>
+ * <td>noDataClassifiers</td><td>Double[]</td>
+ * <td>NoData specific for image classifiers. The order of the noData elements of the array
+ * shall respect the order of the elements within the image classifiers array. 
+ * NoData are specified as Double although they refer to classifiers images which are of 
+ * integer types. Using a Double allows to specifiy NaN in case some specific noData entries
+ * aren't unavailable for some classifier images. As an instance 
+ * [-9999, Double.NaN, -32768, 0, Double.NaN] in case there isn't any noData for classifierImage 
+ * 1 and 4 (starting from index 0).
  * </td><td>null (no NODATA values defined)</td>
  * </tr>
  * </table>

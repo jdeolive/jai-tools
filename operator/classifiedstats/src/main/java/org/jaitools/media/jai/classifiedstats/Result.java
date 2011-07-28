@@ -46,7 +46,7 @@ import org.jaitools.numeric.Statistic;
 public class Result {
 
     private MultiKey classifierKeys;
-    private List<Range> ranges;
+    private List<Range<Double>> ranges;
     private int imageBand;
     private Statistic stat;
     private Double value;
@@ -68,8 +68,9 @@ public class Result {
      *        this result
      * @param numNaN number of NaN values read from the data image
      * @param numNoData number of NoData values read from the data image
+     * @param classifierKeys the classifier keys (multikey) associated to this result
      */
-    public Result(int imageBand, Statistic stat, List<Range> ranges, 
+    public Result(int imageBand, Statistic stat, List<Range<Double>> ranges, 
                   Double value, long numOffered, long numAccepted, long numNaN, 
                   long numNoData, MultiKey classifierKeys) {
         this.imageBand = imageBand;
@@ -89,7 +90,7 @@ public class Result {
      * 
      * @return ranges used to filter data image values
      */
-    public Collection<Range> getRanges() {
+    public Collection<Range<Double>> getRanges() {
         return Collections.unmodifiableCollection(ranges);
     }
 
@@ -162,7 +163,10 @@ public class Result {
     }
 
     /**
-     * Get the classifier keys.
+     * Get the classifier keys. The key order respects the order of the classifier layers.
+     * Supposing you have set a classified stats with classifierImage1 and classifierImage2
+     * the MultiKey [key1, key2] refers to the key associated with classifierImage1 and
+     * classifierImage2 respectively.
      * 
      * @return the classifier keys
      */
@@ -173,8 +177,8 @@ public class Result {
     @Override
     public String toString() {
         String rangess = ranges != null && !ranges.isEmpty() ? ranges.toString() : "";
-        return String.format("band %d %s: %.4f Naccepted=%d (offered:%d - NoData:%d - NaN:%d) %s",
-                imageBand, stat, value, numAccepted, numOffered, numNoData, numNaN, rangess);
+        return String.format("band %d %s: %.4f Naccepted=%d (offered:%d - NoData:%d - NaN:%d) %s Classifier:%s",
+                imageBand, stat, value, numAccepted, numOffered, numNoData, numNaN, rangess, classifierKeys);
     }
 
 

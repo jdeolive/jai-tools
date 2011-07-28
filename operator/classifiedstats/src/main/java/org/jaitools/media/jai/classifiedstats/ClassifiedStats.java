@@ -70,7 +70,7 @@ public class ClassifiedStats {
      * @param stat selected statistic or {@code null} for all statistics
      * @param ranges selected ranges or {@code null} for all ranges
      */
-    private ClassifiedStats(ClassifiedStats src, Integer band, Statistic stat, List<Range> ranges) {
+    private ClassifiedStats(ClassifiedStats src, Integer band, Statistic stat, List<Range<Double>> ranges) {
         results = new HashMap<MultiKey, List<Result>>();
         Set<MultiKey> ks = src.results.keySet();
         Iterator<MultiKey> it = ks.iterator();
@@ -87,7 +87,7 @@ public class ClassifiedStats {
                         if (r.getRanges().containsAll(ranges)) {
                             rsCopy.add(r);
                         } else {
-                            for (Range range : ranges) {
+                            for (Range<Double> range : ranges) {
                                 if (r.getRanges().contains(range)) {
                                     rsCopy.add(r);
                                 }
@@ -104,7 +104,7 @@ public class ClassifiedStats {
      * Store the results for the given classificationKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
-    void setResults(int band, MultiKey classificationKey, StreamingSampleStats stats, List<Range> ranges) {
+    void setResults(int band, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
 
         //First preliminary check on an already populated list of results for that key
         List<Result> rs = results.get(classificationKey);
@@ -166,7 +166,7 @@ public class ClassifiedStats {
      * @return a new {@code ClassifiedStats} object containing results for the ranges
      *         (data are shared with the source object rather than copied)
      */
-    public ClassifiedStats ranges(List<Range> ranges) {
+    public ClassifiedStats ranges(List<Range<Double>> ranges) {
         return new ClassifiedStats(this, null, null, ranges);
     }
 
