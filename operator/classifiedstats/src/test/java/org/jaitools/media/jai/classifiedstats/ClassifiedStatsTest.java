@@ -84,7 +84,7 @@ public class ClassifiedStatsTest {
             RenderedOp op = JAI.create("ClassifiedStats", pb);
             ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
     
-            Map<MultiKey, List<Result>> results = stats.results();
+            Map<MultiKey, List<Result>> results = stats.results().get(0);
             Set<MultiKey> multikeys = results.keySet();
             Iterator<MultiKey> it = multikeys.iterator();
             while (it.hasNext()) {
@@ -97,7 +97,7 @@ public class ClassifiedStatsTest {
             
             System.out.println("Getting Max from the result coming from the 2nd stripe (The first classifier raster, with value = 1), " +
             		"\n and the second classifier raster with value = 50");
-            System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(0));
+            System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(0));
         } finally {
             if (sample != null){
                 try {
@@ -158,7 +158,7 @@ public class ClassifiedStatsTest {
         RenderedOp op = JAI.create("ClassifiedStats", pb);
         ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
 
-        Map<MultiKey, List<Result>> results = stats.results();
+        Map<MultiKey, List<Result>> results = stats.results().get(0);
         Set<MultiKey> multikeys = results.keySet();
         Iterator<MultiKey> it = multikeys.iterator();
         while (it.hasNext()) {
@@ -170,8 +170,8 @@ public class ClassifiedStatsTest {
         }
         System.out.println("\nGetting Max from the result coming from the 2nd stripe (The first classifier raster, with value = 1), " +
         "\n and the second classifier raster with value = 50, for the first and second range");
-        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(0));
-        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(new MultiKey(1,50)).get(1));
+        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(0));
+        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(1));
     }
 
 }

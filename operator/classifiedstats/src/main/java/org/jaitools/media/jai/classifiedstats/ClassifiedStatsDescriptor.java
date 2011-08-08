@@ -30,16 +30,12 @@ import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
 import java.awt.image.renderable.ParameterBlock;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import javax.media.jai.OperationDescriptorImpl;
 import javax.media.jai.ROI;
 import javax.media.jai.registry.RenderedRegistryMode;
 
-import org.apache.commons.collections.keyvalue.MultiKey;
 import org.jaitools.numeric.Range;
 import org.jaitools.numeric.RangeComparator;
 import org.jaitools.numeric.RangeUtils;
@@ -188,24 +184,25 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
     static final int DATA_IMAGE = 0;
     static final int CLASSIFIER_IMAGE = 1;
 
-    private static final String[] srcImageNames = {"dataImage"/*, "classifierImage0",
-        "classifierImage1", "classifierImage2", "classifierImage3", "classifierImage4"*/};
+    private static final String[] srcImageNames = {"dataImage"};
 
-    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class/*, RenderedImage.class,
-        RenderedImage.class, RenderedImage.class, RenderedImage.class, RenderedImage.class*/}};
+    private static final Class<?>[][] srcImageClasses = {{RenderedImage.class}};
 
     static final int CLASSIFIER_ARG = 0;
-    static final int STATS_ARG = 1;
-    static final int BAND_ARG = 2;
-    static final int ROI_ARG = 3;
-    static final int RANGES_ARG = 4;
-    static final int RANGES_TYPE_ARG = 5;
-    static final int RANGE_LOCAL_STATS_ARG = 6;
-    static final int NODATA_RANGES_ARG = 7;
-    static final int NODATA_CLASSIFIER_ARG = 8;
+    static final int PIVOT_CLASSIFIER_ARG = 1;
+    static final int STATS_ARG = 2;
+    static final int BAND_ARG = 3;
+    static final int ROI_ARG = 4;
+    static final int RANGES_ARG = 5;
+    static final int RANGES_TYPE_ARG = 6;
+    static final int RANGE_LOCAL_STATS_ARG = 7;
+    static final int NODATA_RANGES_ARG = 8;
+    static final int NODATA_CLASSIFIER_ARG = 9;
+    static final int NODATA_PIVOT_CLASSIFIER_ARG = 10;
 
     private static final String[] paramNames = {
         "classifiers",
+        "pivotClassifiers",
         "stats", 
         "bands", 
         "roi", 
@@ -213,10 +210,13 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
         "rangesType", 
         "rangeLocalStats", 
         "noDataRanges",
-        "noDataClassifiers"
+        "noDataClassifiers",
+        "noDataPivotClassifiers"
+        
     };
 
     private static final Class<?>[] paramClasses = {
+        RenderedImage[].class,
         RenderedImage[].class,
         Statistic[].class, 
         Integer[].class,
@@ -225,10 +225,12 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
         Range.Type.class, 
         Boolean.class, 
         Collection.class,
+        Double[].class,
         Double[].class
     };
 
     private static final Object[] paramDefaults = {
+        null,
         null,
         NO_PARAMETER_DEFAULT,
         new Integer[]{Integer.valueOf(0)}, 
@@ -237,7 +239,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
         Range.Type.UNDEFINED, 
         Boolean.FALSE, 
         (Collection) null,
-        null
+        null, null
     };
     
 
@@ -253,50 +255,63 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
 
                 {
                     "arg0Desc",
-                    String.format("%s - an array of RenderedImage representing the classifier input"
-                            + "images", paramNames[CLASSIFIER_ARG])},
+                    String.format("%s - an array of RenderedImage representing the classifier "
+                            + "input images", paramNames[CLASSIFIER_ARG])},
                 {
-                        "arg1Desc",
+                    "arg1Desc",
+                    String.format("%s - an array of RenderedImage representing the pivot classifier "
+                            + "input images", paramNames[PIVOT_CLASSIFIER_ARG])},
+                {
+                        "arg2Desc",
                         String.format("%s - an array of Statistic constants specifying the "
                                 + "statistics required", paramNames[STATS_ARG])},
 
                 {
-                        "arg2Desc",
+                        "arg3Desc",
                         String.format("%s (default %s) - the bands of the data image to process",
                                 paramNames[BAND_ARG], paramDefaults[BAND_ARG])},
 
                 {
-                        "arg3Desc",
+                        "arg4Desc",
                         String.format("%s (default ) - an optional ROI for masking the data image",
                                 paramNames[ROI_ARG], paramDefaults[ROI_ARG])},
 
                 {
-                        "arg4Desc",
+                        "arg5Desc",
                         String.format("%s (default %s) - an optional Collection of Ranges "
                                 + "that define dataImage values to include or exclude",
                                 paramNames[RANGES_ARG], paramDefaults[RANGES_ARG])},
 
                 {
-                        "arg5Desc",
+                        "arg6Desc",
                         String.format("%s (default %s) - whether to include or exclude provided ranges",
                             paramNames[RANGES_TYPE_ARG], paramDefaults[RANGES_TYPE_ARG])},
 
                 {
-                        "arg6Desc",
+                        "arg7Desc",
                         String.format("%s (default %s) - whether to calculate statistics separately "
                                 + "for ranges (when provided)",
                             paramNames[RANGE_LOCAL_STATS_ARG], paramDefaults[RANGE_LOCAL_STATS_ARG])},
                 {
-                        "arg7Desc",
+                        "arg8Desc",
                         String.format("%s (default %s) - an optional Collection of Ranges "
                             + "defining values to treat as NODATA",
                             paramNames[NODATA_RANGES_ARG], paramDefaults[NODATA_RANGES_ARG])},
                 {
-                    "arg8Desc",
+                    "arg9Desc",
                     String.format("%s (default %s) - an optional Array of values "
                         + "defining values to treat as NODATA from the classifier raster inputs\n" 
                         + "the i-th element of the array refers to the i-th classifier raster source",
                         paramNames[NODATA_CLASSIFIER_ARG], paramDefaults[NODATA_CLASSIFIER_ARG])},
+                {
+                    "arg10Desc",
+                    String.format("%s (default %s) - an optional Array of values "
+                        + "defining values to treat as NODATA from the pivot classifier raster inputs\n" 
+                        + "the i-th element of the array refers to the i-th pivot classifier raster source",
+                        paramNames[NODATA_CLASSIFIER_ARG], paramDefaults[NODATA_PIVOT_CLASSIFIER_ARG])},
+                                
+                                
+                        
 
         },
 
@@ -328,7 +343,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             return false;
         }
         
-        // CHECKING CLASSIFIED IMAGES
+        // CHECKING CLASSIFIER IMAGES
         Object renderedObjects = pb.getObjectParameter(CLASSIFIER_ARG);
         RenderedImage[] classifierImages = null;
         if (!(renderedObjects instanceof RenderedImage[])) {
@@ -336,6 +351,16 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             return false;
         } else {
             classifierImages = (RenderedImage[]) renderedObjects;
+        }
+        
+        // CHECKING PIVOT CLASSIFIER IMAGES
+        Object pivotObjects = pb.getObjectParameter(PIVOT_CLASSIFIER_ARG);
+        RenderedImage[] pivotClassifierImages = null;
+        if (pivotObjects != null && !(pivotObjects instanceof RenderedImage[])) {
+            msg.append(paramNames[PIVOT_CLASSIFIER_ARG]).append(" arg has to be of type RenderedImage[]");
+            return false;
+        } else {
+            pivotClassifierImages = (RenderedImage[]) pivotObjects;
         }
 
         // CHECKING RANGES
@@ -484,6 +509,38 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             return false;
         }
         
+        
+        // CHECKING PIVOT CLASSIFIER IMAGES 
+        int numPivotClassifier = pivotClassifierImages != null ? pivotClassifierImages.length : 0;
+        if (numPivotClassifier != 0){
+            for (int i = 0; i < numPivotClassifier; i++){
+                RenderedImage classifierImage = pivotClassifierImages[i];
+                final Rectangle classifierBounds = new Rectangle(
+                        classifierImage.getMinX(), classifierImage.getMinY(), 
+                        classifierImage.getWidth(), classifierImage.getHeight());
+                int dataType = classifierImage.getSampleModel().getDataType();
+                boolean integralType = false;
+                if (dataType == DataBuffer.TYPE_BYTE || dataType == DataBuffer.TYPE_INT
+                        || dataType == DataBuffer.TYPE_SHORT || dataType == DataBuffer.TYPE_USHORT) {
+                    integralType = true;
+                }
+    
+                if (!integralType) {
+                    msg.append("The pivot classifier image must be an integral data type");
+                    return false;
+                }
+                
+                if (classifierBounds.width != dataBounds.width || classifierBounds.height != dataBounds.height
+                        || classifierBounds.x != dataBounds.x || classifierBounds.y != dataBounds.y){
+                    msg.append("Data image bounds and pivot classifier raster bounds should match:\n "
+                            + "Data Image: " + dataBounds.toString() + "\n Pivot Classifier Image[" + i + "]: " 
+                            + classifierBounds.toString());
+           
+                    return false;
+                }
+            }
+        } 
+        
         Object noDataClassifierArg = pb.getObjectParameter(NODATA_CLASSIFIER_ARG);
         Double[] noDataClassifier = null;
         if (noDataClassifierArg != null){
@@ -496,6 +553,23 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                     msg.append(paramNames[NODATA_CLASSIFIER_ARG]).append(" arg has to have the same " +
                         "number of elements of " + paramNames[CLASSIFIER_ARG] + " = " + numClassifiers + 
                         "whilst its actual size is " + noDataClassifier.length);
+                }
+            }
+        }
+        
+        Object noDataPivotClassifierArg = pb.getObjectParameter(NODATA_PIVOT_CLASSIFIER_ARG);
+        Double[] noDataPivotClassifier = null;
+        if (noDataPivotClassifierArg != null){
+            if (!(noDataPivotClassifierArg instanceof Double[])) {
+            msg.append(paramNames[NODATA_PIVOT_CLASSIFIER_ARG]).append(" arg has to be of type Double[]");
+            return false;
+            } else {
+                noDataPivotClassifier = (Double[]) noDataPivotClassifierArg;
+                if (noDataPivotClassifier.length != numPivotClassifier){
+                    msg.append(paramNames[NODATA_PIVOT_CLASSIFIER_ARG]).append(" arg has to have the same " +
+                        "number of elements of " + paramNames[PIVOT_CLASSIFIER_ARG] + " = " 
+                        + numPivotClassifier + "whilst its actual size is " 
+                        + noDataPivotClassifier.length);
                 }
             }
         }

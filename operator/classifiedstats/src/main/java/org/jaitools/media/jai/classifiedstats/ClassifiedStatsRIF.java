@@ -69,8 +69,10 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
 
         RenderedImage dataImage = paramBlock.getRenderedSource(ClassifiedStatsDescriptor.DATA_IMAGE);
         RenderedImage[] classifierImages = null;
+        RenderedImage[] pivotClassifierImages = null;
 
         classifierImages = (RenderedImage[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.CLASSIFIER_ARG);
+        pivotClassifierImages = (RenderedImage[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.PIVOT_CLASSIFIER_ARG);
 
         ImageLayout layout = RIFUtil.getImageLayoutHint(renderHints);
         if (layout == null) layout = new ImageLayout();
@@ -117,12 +119,18 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
             }
         }
         
-        Double[] noDataClassifiers = (Double[]) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.NODATA_CLASSIFIER_ARG);
+        Double[] noDataClassifiers = (Double[]) paramBlock.getObjectParameter(
+                ClassifiedStatsDescriptor.NODATA_CLASSIFIER_ARG);
+        
+        Double[] noDataPivotClassifiers = (Double[]) paramBlock.getObjectParameter(
+                ClassifiedStatsDescriptor.NODATA_PIVOT_CLASSIFIER_ARG);
 
         ROI roi = (ROI) paramBlock.getObjectParameter(ClassifiedStatsDescriptor.ROI_ARG);
 
         return new ClassifiedStatsOpImage(
-                dataImage, classifierImages,
+                dataImage, 
+                classifierImages, 
+                pivotClassifierImages,
                 renderHints,
                 layout,
                 stats,
@@ -132,7 +140,8 @@ public class ClassifiedStatsRIF implements RenderedImageFactory {
                 rangesType,
                 rangeLocalStats,
                 noDataRanges,
-                noDataClassifiers
+                noDataClassifiers, 
+                noDataPivotClassifiers
                 );
     }
 }

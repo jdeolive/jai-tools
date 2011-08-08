@@ -25,6 +25,7 @@
 
 package org.jaitools.media.jai.classifiedstats;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -53,13 +54,15 @@ import org.jaitools.numeric.StreamingSampleStats;
  */
 public class ClassifiedStats {
 
-    private Map<MultiKey, List<Result>> results;
+    private List<Map<MultiKey, List<Result>>> results;
     
     /**
      * Constructor. Package-private; called by ClassifiedStatsOpImage.
      */
     ClassifiedStats() {
-        results = new HashMap<MultiKey, List<Result>>();
+        Map<MultiKey, List<Result>> map = new HashMap<MultiKey, List<Result>>();
+        results = new ArrayList<Map<MultiKey,List<Result>>>();
+        results.add(map);
     }
 
     /**
@@ -70,13 +73,26 @@ public class ClassifiedStats {
      * @param stat selected statistic or {@code null} for all statistics
      * @param ranges selected ranges or {@code null} for all ranges
      */
-    private ClassifiedStats(ClassifiedStats src, Integer band, Statistic stat, List<Range<Double>> ranges) {
-        results = new HashMap<MultiKey, List<Result>>();
-        Set<MultiKey> ks = src.results.keySet();
+    private ClassifiedStats(ClassifiedStats src, Integer band, Integer groupInd, Statistic stat, List<Range<Double>> ranges) {
+        this();
+        Map<MultiKey, List<Result>> group = null;
+        int groupIndex = groupInd == null ? 0 : groupInd; 
+        if (groupIndex < results.size()){
+            group = results.get(groupIndex);
+            if (group == null){
+                group = new HashMap<MultiKey, List<Result>>();
+                results.add(groupIndex, group);
+            }
+        } else {
+            group = new HashMap<MultiKey, List<Result>>();
+            results.add(group);
+        }
+        
+        Set<MultiKey> ks = src.results.get(groupIndex).keySet();
         Iterator<MultiKey> it = ks.iterator();
         while (it.hasNext()){
             MultiKey mk = it.next();
-            List<Result> rs = src.results.get(mk);
+            List<Result> rs = src.results.get(groupIndex).get(mk);
             List<Result> rsCopy = CollectionFactory.list();
             for (Result r: rs){
                 if ((band == null || r.getImageBand() == band) &&
@@ -96,7 +112,7 @@ public class ClassifiedStats {
                     }
                 }
             }
-            results.put(mk, rsCopy);
+            group.put(mk, rsCopy);
         }
     }
 
@@ -104,10 +120,21 @@ public class ClassifiedStats {
      * Store the results for the given classificationKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
-    void setResults(int band, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
+    void setResults(int band, int groupIndex, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
 
         //First preliminary check on an already populated list of results for that key
-        List<Result> rs = results.get(classificationKey);
+        Map<MultiKey, List<Result>> group = null;
+        if (groupIndex < results.size()){
+            group = results.get(groupIndex);
+            if (group == null){
+                group = new HashMap<MultiKey, List<Result>>();
+                results.add(groupIndex, group);
+            }
+        } else {
+            group = new HashMap<MultiKey, List<Result>>();
+            results.add(group);
+        }
+        List<Result> rs = group.get(classificationKey);
         if (rs == null) {
             rs = CollectionFactory.list();    
         }
@@ -122,11 +149,11 @@ public class ClassifiedStats {
                     stats.getNumNoData(s), classificationKey);
             rs.add(r);
         }
-        results.put(classificationKey, rs);
+        group.put(classificationKey, rs);
     }
 
-    void setResults(int band, MultiKey classifierKey, StreamingSampleStats stats) {
-        setResults(band, classifierKey, stats, null);
+    void setResults(int band, int group, MultiKey classifierKey, StreamingSampleStats stats) {
+        setResults(band, group, classifierKey, stats, null);
     }
 
 
@@ -141,7 +168,7 @@ public class ClassifiedStats {
      *         (data are shared with the source object rather than copied)
      */
     public ClassifiedStats band(int b) {
-        return new ClassifiedStats(this, b, null, null);
+        return new ClassifiedStats(this, b, 0, null, null);
     }
 
     /**
@@ -155,7 +182,7 @@ public class ClassifiedStats {
      *         (data are shared with the source object rather than copied)
      */
     public ClassifiedStats statistic(Statistic s) {
-        return new ClassifiedStats(this, null, s, null);
+        return new ClassifiedStats(this, null, null, s, null);
     }
 
     /**
@@ -167,7 +194,7 @@ public class ClassifiedStats {
      *         (data are shared with the source object rather than copied)
      */
     public ClassifiedStats ranges(List<Range<Double>> ranges) {
-        return new ClassifiedStats(this, null, null, ranges);
+        return new ClassifiedStats(this, null, null, null, ranges);
     }
 
     /**
@@ -179,7 +206,7 @@ public class ClassifiedStats {
      * @return the results
      * @see Result
      */
-    public Map<MultiKey, List<Result>> results() {
-        return Collections.unmodifiableMap(results);
+    public List<Map<MultiKey, List<Result>>> results() {
+        return Collections.unmodifiableList(results);
     }
 }

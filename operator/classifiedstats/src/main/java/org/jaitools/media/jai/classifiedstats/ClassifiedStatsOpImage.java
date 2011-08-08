@@ -27,10 +27,12 @@ package org.jaitools.media.jai.classifiedstats;
 
 import java.awt.Rectangle;
 import java.awt.image.RenderedImage;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,7 +88,12 @@ public class ClassifiedStatsOpImage extends NullOpImage {
 
     private final RenderedImage[] classifierImages;
     
+    private final RenderedImage[] pivotClassifierImages;
+    
     private double[] noDataForClassifierImages;
+    
+    private double[] noDataForPivotClassifierImages;
+    
 
     /**
      * A simple object holding classifier properties:
@@ -192,6 +199,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     public ClassifiedStatsOpImage(
             final RenderedImage dataImage, 
             final RenderedImage[] classifierImages,
+            final RenderedImage[] pivotClassifierImages,
             final Map<?, ?> config, 
             final ImageLayout layout, 
             final Statistic[] stats, 
@@ -201,12 +209,15 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             final Range.Type rangesType, 
             final boolean rangeLocalStats,
             final Collection<Range<Double>> noDataRanges, 
-            final Double[] noDataClassifiers) {
+            final Double[] noDataClassifiers,
+            final Double[] noDataPivotClassifiers
+            ) {
 
         super(dataImage, layout, config, OpImage.OP_COMPUTE_BOUND);
 
         this.dataImage = dataImage;
         this.classifierImages = classifierImages;
+        this.pivotClassifierImages = pivotClassifierImages;
         
         // Setting imagesParameters
         this.imageWidth = dataImage.getWidth();
@@ -255,6 +266,13 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                 this.noDataForClassifierImages[i] = noDataClassifiers[i];
             }
         }
+        
+        if (noDataPivotClassifiers!= null){
+            this.noDataForPivotClassifierImages = new double[noDataPivotClassifiers.length];
+            for (int i = 0; i < noDataPivotClassifiers.length; i++){
+                this.noDataForPivotClassifierImages[i] = noDataPivotClassifiers[i];
+            }
+        }
     }
 
     /**
@@ -274,6 +292,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         // //
         final RandomIter dataIter = RandomIterFactory.create(dataImage, dataImageBounds);
         final int numClassifiers = classifierImages.length;
+        final int numPivotClassifiers = pivotClassifierImages != null ? pivotClassifierImages.length : 0;
         final ClassifierObject[] classifiers = new ClassifierObject[numClassifiers];
         for (int i = 0; i < numClassifiers; i++) {
             final RandomIter classifierIter = RandomIterFactory.create(classifierImages[i], dataImageBounds);
@@ -283,13 +302,21 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             classifiers[i] = new ClassifierObject(classifierIter, checkForNoData, noDataClassifierValue);
         }
         
+        final ClassifierObject[] pivotClassifiers = numPivotClassifiers > 0 ? new ClassifierObject[numPivotClassifiers] : null;
+        for (int i = 0; i < numPivotClassifiers; i++) {
+            final RandomIter classifierIter = RandomIterFactory.create(pivotClassifierImages[i], dataImageBounds);
+            final boolean checkForNoData = (noDataForPivotClassifierImages != null && !Double.isNaN(noDataForPivotClassifierImages[i])) ?
+                    true : false; 
+            final int noDataClassifierValue = checkForNoData ? (int)noDataForPivotClassifierImages[i] : 0;
+            pivotClassifiers[i] = new ClassifierObject(classifierIter, checkForNoData, noDataClassifierValue);
+        }
         // //
         //
         // Compute statistics
         //
         // //
         if (!rangeLocalStats) {
-            classifiedStats = compileClassifiedStatistics(dataIter, classifiers);
+            classifiedStats = compileClassifiedStatistics(dataIter, classifiers, pivotClassifiers);
         } else {
             classifiedStats = compileLocalRangeStatistics(dataIter, classifiers);
         }
@@ -302,6 +329,9 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         dataIter.done();
         for (int i = 0; i < numClassifiers; i++) {
             classifiers[i].classifierIter.done();
+        }
+        for (int i = 0; i < numPivotClassifiers; i++) {
+            pivotClassifiers[i].classifierIter.done();
         }
 
         return classifiedStats;
@@ -349,12 +379,25 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      */
     private ClassifiedStats compileClassifiedStatistics(
             final RandomIter dataIter,
-            ClassifierObject[] classifiers) {
+            ClassifierObject[] classifiers,
+            ClassifierObject[] pivotClassifiers) {
         ClassifiedStats classifiedStats = new ClassifiedStats();
-        Map<Integer, Map<MultiKey, StreamingSampleStats>> results = CollectionFactory.sortedMap();
+        Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results = CollectionFactory.sortedMap();
+        final int numPivots = pivotClassifiers != null ? pivotClassifiers.length : 0;
         for (Integer srcBand : srcBands) {
-            Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
-            results.put(srcBand, resultsPerBand);
+            if (numPivots > 0){
+                List<Map<MultiKey, StreamingSampleStats>> pivotLists = 
+                    new ArrayList<Map<MultiKey,StreamingSampleStats>>(numPivots);
+                for (int i = 0; i < numPivots; i++){
+                    Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
+                    pivotLists.add(resultsPerBand);
+                }
+                results.put(srcBand, pivotLists);                
+            } else {
+                Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
+                List<Map<MultiKey, StreamingSampleStats>> singleElement = Collections.singletonList(resultsPerBand);
+                results.put(srcBand, singleElement);   
+            }
         }
         
         // //
@@ -370,7 +413,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         //
         // //
         // Loop over the tiles
-        computeStatsOnTiles(dataIter, classifiers, localRangeType, localRanges, results);
+        computeStatsOnTiles(dataIter, classifiers, pivotClassifiers, localRangeType, localRanges, results);
         
         // //
         //
@@ -378,9 +421,14 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         //
         // //
         for (Integer band : srcBands) {
-            Set<MultiKey> classifierSetForBand = results.get(band).keySet();
-            for (MultiKey classifier : classifierSetForBand) {
-                classifiedStats.setResults(band, classifier, results.get(band).get(classifier));
+            int numElements = numPivots > 0 ? numPivots : 1;
+            List<Map<MultiKey, StreamingSampleStats>> resultList = results.get(band);
+            for (int i = 0; i < numElements; i++){
+                Map<MultiKey, StreamingSampleStats> resultMap = resultList.get(i);
+                Set<MultiKey> classifierSetForBand = resultMap.keySet();
+                for (MultiKey classifier : classifierSetForBand) {
+                    classifiedStats.setResults(band, i, classifier, resultMap.get(classifier));
+                }
             }
         }
         return classifiedStats;
@@ -425,16 +473,16 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         //
         // //
         for (Range<Double> range : rangesList) {
-            Map<Integer, Map<MultiKey, StreamingSampleStats>> results = CollectionFactory.sortedMap();
+            Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results = CollectionFactory.sortedMap();
             for (int index = 0; index < srcBands.length; index++) {
                 Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
-                results.put(index, resultsPerBand);
+                results.put(index, Collections.singletonList(resultsPerBand));
 
             }
             final List<Range<Double>> localRanges = Collections.singletonList(range);
             
             // Loop over the tiles
-            computeStatsOnTiles(dataIter, classifiers, localRangeType, localRanges, results);
+            computeStatsOnTiles(dataIter, classifiers, null, localRangeType, localRanges, results);
 
 
             // //
@@ -444,14 +492,15 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             // //
             final Set<MultiKey> classifKeys = new HashSet<MultiKey>();
             for (Integer band : srcBands) {
-                Set<MultiKey> classifierSetForBand = results.get(band).keySet();
+                Set<MultiKey> classifierSetForBand = results.get(band).get(0).keySet();
                 classifKeys.addAll(classifierSetForBand);
             }
 
             for (int index = 0; index < srcBands.length; index++) {
                 for (MultiKey classifier : classifKeys) {
-                    classifiedStats.setResults(srcBands[index], classifier,
-                            results.get(index).get(classifier), localRanges);
+                    //TODO: FIX THIS TO DEAL WITH GROUPS?
+                    classifiedStats.setResults(srcBands[index], 0, classifier,
+                            results.get(index).get(0).get(classifier), localRanges);
                 }
             }
         }
@@ -472,14 +521,20 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      */
     private void computeStatsOnTiles( 
             final RandomIter dataIter,
-            final ClassifierObject[] classifiers, 
+            final ClassifierObject[] classifiers,
+            final ClassifierObject[] pivotClassifiers, 
             final Type localRangeType, List<Range<Double>> localRanges, 
-            final Map<Integer, Map<MultiKey, StreamingSampleStats>> results) {
+//            final Map<Integer, Map<MultiKey, StreamingSampleStats>> results
+            Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results
+            ) {
         
         // Initialization
         final int numClassifiers = classifiers.length;
+        final int numPivotClassifiers = pivotClassifiers != null ? pivotClassifiers.length : 0;
         final double[] sampleValues = new double[dataImage.getSampleModel().getNumBands()];
-        final Integer[] key = new Integer[numClassifiers];
+        final int pivotClassifiersIncrement = numPivotClassifiers > 0 ? 1 : 0;
+        final Integer[] keys = new Integer[numClassifiers + pivotClassifiersIncrement];
+        final Integer[] pivotKeys = new Integer[numPivotClassifiers];
         
         // Loop over tiles
         for (int tileY = imageMinTileY; tileY <= imageMaxTileY; tileY++) {
@@ -496,11 +551,18 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                     // skip the stat for it.
                                     boolean skipStats = false;
                                     for (int i = 0; i < numClassifiers; i++) {
-                                        key[i] = classifiers[i].classifierIter.getSample(col, row, 0);
+                                        keys[i+pivotClassifiersIncrement] = classifiers[i].classifierIter.getSample(col, row, 0);
                                         if (classifiers[i].checkForNoData){
-                                            skipStats = skipStats || (key[i] == classifiers[i].noData);
+                                            skipStats = skipStats || (keys[i+pivotClassifiersIncrement] == classifiers[i].noData);
                                         }
                                     }
+                                    for (int i = 0; i < numPivotClassifiers; i++) {
+                                        pivotKeys[i] = pivotClassifiers[i].classifierIter.getSample(col, row, 0);
+                                        if (pivotClassifiers[i].checkForNoData){
+                                            skipStats = skipStats || (pivotKeys[i] == pivotClassifiers[i].noData);
+                                        }
+                                    }
+                                    
                                     if (skipStats){
                                         continue;
                                     }
@@ -508,13 +570,28 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                     //Offer values to statistics operations                                    
                                     for (Integer band : srcBands) {
                                         sampleValues[band] = dataIter.getSample(col, row, band);
-                                        Map<MultiKey, StreamingSampleStats> resultPerBand = results.get(band);
-                                        MultiKey mk = new MultiKey(key);
-                                        StreamingSampleStats sss = resultPerBand.get(mk);
-                                        if (sss == null) {
-                                            sss = setupStats(resultPerBand, mk, localRangeType, localRanges);
+                                        List<Map<MultiKey, StreamingSampleStats>> resultPerBand = results.get(band);
+                                        boolean goOn = true;
+                                        int i = 0;
+                                        while (goOn){
+                                            Map<MultiKey, StreamingSampleStats> keyedElement = resultPerBand.get(i);
+                                            if (numPivotClassifiers > 0){
+                                                keys[0] = pivotKeys[i];
+                                                if (i == numPivotClassifiers - 1){
+                                                    goOn = false;
+                                                }
+                                            } else { 
+                                                goOn = false;
+                                            }
+                                            MultiKey mk = createMultiKey(keys);
+                                            StreamingSampleStats sss = keyedElement.get(mk);
+                                            if (sss == null) {
+                                                sss = setupStats(keyedElement, mk, localRangeType, localRanges);
+                                            }
+                                            sss.offer(sampleValues[band]);
+                                            i++;
+                                            
                                         }
-                                        sss.offer(sampleValues[band]);
                                     }
                                 }
                             }
@@ -526,6 +603,23 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         
     }
     
+    private final static MultiKey createMultiKey(Integer[] keys) {
+        final int nKeys = keys.length;
+        switch (nKeys){
+        case 2:
+            return new MultiKey(keys[0], keys[1]);
+        case 3:
+            return new MultiKey(keys[0], keys[1], keys[2]);
+        case 4:
+            return new MultiKey(keys[0], keys[1], keys[2], keys[3]);
+        case 5:
+            return new MultiKey(keys[0], keys[1], keys[2], keys[3], keys[4]);
+        default:
+            return new MultiKey(keys);
+        }
+        
+    }
+
     /**
      * Get the specified property.
      * <p>

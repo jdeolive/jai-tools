@@ -78,7 +78,7 @@ public class GSClassifiedStatsTest {
     @Test
     @Ignore
     public void testClassificationOnMeasure() throws IOException {
-//        long start = System.nanoTime();
+        long start = System.nanoTime();
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info(" test classification on measured data");
         }
@@ -93,7 +93,7 @@ public class GSClassifiedStatsTest {
             RenderedImage sampleImage = ImageReadDescriptor.create(sampleIs, 0, false, false,
                     false, null, null, null, sampleImageReader, hints);
 
-            final File gaulFile = new File("d:\\data\\gs\\worldZoneIdentifiers.tif");
+            final File gaulFile = new File("d:\\data\\gs\\landMap.tif");
             gaulIs = ImageIO.createImageInputStream(gaulFile);
             gaulImageReader = ImageIO.getImageReaders(gaulIs).next();
             RenderedImage gaulImage = ImageReadDescriptor.create(gaulIs, 0, false, false, false,
@@ -102,26 +102,26 @@ public class GSClassifiedStatsTest {
             ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
             pb.addSource(sampleImage);
             pb.setParameter("classifiers", new RenderedImage[] { gaulImage });
-            pb.setParameter("noDataClassifiers", new Double[] { -32768d });
+            pb.setParameter("noDataClassifiers", new Double[] { 0d });
             List<Range<Double>> noRanges = CollectionFactory.list();
             noRanges.add(Range.create(-9.0d, null));
             pb.setParameter("noDataRanges", noRanges);
 
-            pb.setParameter("stats", new Statistic[] { Statistic.SUM });
+            pb.setParameter("stats", new Statistic[] { Statistic.SUM, Statistic.MAX, Statistic.MEAN, Statistic.MIN, Statistic.SDEV });
             pb.setParameter("bands", new Integer[] { 0 });
 
             RenderedOp op = JAI.create("ClassifiedStats", pb);
             ClassifiedStats stats = (ClassifiedStats) op
                     .getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
 
-            Map<MultiKey, List<Result>> results = stats.results();
+            Map<MultiKey, List<Result>> results = stats.results().get(0);
             Set<MultiKey> km = results.keySet();
             Iterator<MultiKey> it = km.iterator();
             while (it.hasNext()) {
                 MultiKey key = it.next();
                 List<Result> rs = results.get(key);
                 for (Result r : rs) {
-                    System.out.println(r.toString() + " class:" + key);
+                    System.out.println(r.toString());
                 }
             }
 
@@ -159,14 +159,14 @@ public class GSClassifiedStatsTest {
                 }
             }
         }
-//        long end = System.nanoTime();
-//        System.out.println("time: " + (end - start)/1000000 );
+        long end = System.nanoTime();
+        System.out.println("time: " + (end - start)/1000000 );
     }
 
     @Test
     @Ignore
     public void testClassificationOnArea() throws IOException {
-//        long start = System.nanoTime();
+        long start = System.nanoTime();
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info(" test classification on Area");
         }
@@ -180,44 +180,52 @@ public class GSClassifiedStatsTest {
             final File sampleFile = new File("d:\\data\\gs\\area.tif");
             sampleIs = ImageIO.createImageInputStream(sampleFile);
             sampleImageReader = ImageIO.getImageReaders(sampleIs).next();
-            RenderedImage sampleImage = ImageReadDescriptor.create(sampleIs, 0, false, false,
+            RenderedOp sampleImage = ImageReadDescriptor.create(sampleIs, 0, false, false,
                     false, null, null, null, sampleImageReader, hints);
 
             final File gaulFile = new File("d:\\data\\gs\\worldZoneIdentifiers.tif");
             gaulIs = ImageIO.createImageInputStream(gaulFile);
             gaulImageReader = ImageIO.getImageReaders(gaulIs).next();
-            RenderedImage gaulImage = ImageReadDescriptor.create(gaulIs, 0, false, false, false,
+            RenderedOp gaulImage = ImageReadDescriptor.create(gaulIs, 0, false, false, false,
                     null, null, null, gaulImageReader, hints);
-
+            
             final File faoFile = new File("d:\\data\\gs\\landMap.tif");
             faoIs = ImageIO.createImageInputStream(faoFile);
             faoImageReader = ImageIO.getImageReaders(faoIs).next();
-            RenderedImage faoImage = ImageReadDescriptor.create(faoIs, 0, false, false, false,
+            RenderedOp faoImage = ImageReadDescriptor.create(faoIs, 0, false, false, false,
                     null, null, null, faoImageReader, hints);
 
             ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
             pb.addSource(sampleImage);
-            pb.setParameter("classifiers", new RenderedImage[] { gaulImage, faoImage });
-            pb.setParameter("noDataClassifiers", new Double[] { -32768d, 0d });
+            pb.setParameter("classifiers", new RenderedImage[] { faoImage });
+            pb.setParameter("pivotClassifiers", new RenderedImage[] { gaulImage});
+            pb.setParameter("noDataClassifiers", new Double[] {0d });
+            pb.setParameter("noDataPivotClassifiers", new Double[] {-32768d});
+            
             List<Range<Double>> noRanges = CollectionFactory.list();
             noRanges.add(Range.create(-9.0d, null));
             pb.setParameter("noDataRanges", noRanges);
 
-            pb.setParameter("stats", new Statistic[] { Statistic.SUM });
+            pb.setParameter("stats", new Statistic[] { Statistic.SUM, Statistic.MAX, Statistic.MEAN, Statistic.MIN, Statistic.SDEV });
             pb.setParameter("bands", new Integer[] { 0 });
 
             RenderedOp op = JAI.create("ClassifiedStats", pb);
             ClassifiedStats stats = (ClassifiedStats) op
                     .getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
 
-            Map<MultiKey, List<Result>> results = stats.results();
-            Set<MultiKey> km = results.keySet();
-            Iterator<MultiKey> it = km.iterator();
-            while (it.hasNext()) {
-                MultiKey key = it.next();
-                List<Result> rs = results.get(key);
-                for (Result r : rs) {
-                    System.out.println(r.toString() + " class:" + key);
+            List<Map<MultiKey, List<Result>>> results = stats.results();
+            
+            for (Map<MultiKey, List<Result>> result: results){
+                Set<MultiKey> km = result.keySet();
+                Iterator<MultiKey> it = km.iterator();
+                while (it.hasNext()) {
+                    MultiKey key = it.next();
+                    List<Result> rs = result.get(key);
+                    for (Result r : rs) {
+                        r.getImageBand();
+//                        System.out.println(t + " " + r.toString());
+                        
+                    }
                 }
             }
 
@@ -271,8 +279,10 @@ public class GSClassifiedStatsTest {
                 }
             }
         }
-//        long end = System.nanoTime();
-//        System.out.println("time: " + (end - start)/1000000 );
+        long end = System.nanoTime();
+        System.out.println("time: " + (end - start)/1000000 );
     }
+    
+    
     
 }
