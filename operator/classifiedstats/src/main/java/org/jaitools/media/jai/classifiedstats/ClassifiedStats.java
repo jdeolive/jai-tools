@@ -70,29 +70,30 @@ public class ClassifiedStats {
      *
      * @param src source object
      * @param band selected image band or {@code null} for all bands
+     * @param pivot selected pivot index or {@code null} for using the first element
      * @param stat selected statistic or {@code null} for all statistics
      * @param ranges selected ranges or {@code null} for all ranges
      */
-    private ClassifiedStats(ClassifiedStats src, Integer band, Integer groupInd, Statistic stat, List<Range<Double>> ranges) {
+    private ClassifiedStats(ClassifiedStats src, Integer band, Integer pivot, Statistic stat, List<Range<Double>> ranges) {
         this();
         Map<MultiKey, List<Result>> group = null;
-        int groupIndex = groupInd == null ? 0 : groupInd; 
-        if (groupIndex < results.size()){
-            group = results.get(groupIndex);
+        int pivotIndex = pivot == null ? 0 : pivot; 
+        if (pivotIndex < results.size()){
+            group = results.get(pivotIndex);
             if (group == null){
                 group = new HashMap<MultiKey, List<Result>>();
-                results.add(groupIndex, group);
+                results.add(pivotIndex, group);
             }
         } else {
             group = new HashMap<MultiKey, List<Result>>();
             results.add(group);
         }
         
-        Set<MultiKey> ks = src.results.get(groupIndex).keySet();
+        Set<MultiKey> ks = src.results.get(pivotIndex).keySet();
         Iterator<MultiKey> it = ks.iterator();
         while (it.hasNext()){
             MultiKey mk = it.next();
-            List<Result> rs = src.results.get(groupIndex).get(mk);
+            List<Result> rs = src.results.get(pivotIndex).get(mk);
             List<Result> rsCopy = CollectionFactory.list();
             for (Result r: rs){
                 if ((band == null || r.getImageBand() == band) &&
@@ -120,15 +121,15 @@ public class ClassifiedStats {
      * Store the results for the given classificationKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
-    void setResults(int band, int groupIndex, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
+    void setResults(int band, int pivotIndex, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
 
         //First preliminary check on an already populated list of results for that key
         Map<MultiKey, List<Result>> group = null;
-        if (groupIndex < results.size()){
-            group = results.get(groupIndex);
+        if (pivotIndex < results.size()){
+            group = results.get(pivotIndex);
             if (group == null){
                 group = new HashMap<MultiKey, List<Result>>();
-                results.add(groupIndex, group);
+                results.add(pivotIndex, group);
             }
         } else {
             group = new HashMap<MultiKey, List<Result>>();
@@ -170,6 +171,20 @@ public class ClassifiedStats {
     public ClassifiedStats band(int b) {
         return new ClassifiedStats(this, b, 0, null, null);
     }
+    
+    /**
+     * Get the subset of results for the given group.
+     *
+     * See the example of chaining this method in the class docs.
+     *
+     * @param g group (pivot) index
+     *
+     * @return a new {@code ClassifiedStats} object containing results for the group
+     *         (data are shared with the source object rather than copied)
+     */
+    public ClassifiedStats group(int g) {
+        return new ClassifiedStats(this, null, g, null, null);
+    }
 
     /**
      * Get the subset of results for the given {@code Statistic}.
@@ -198,10 +213,12 @@ public class ClassifiedStats {
     }
 
     /**
-     * Returns the {@code Result} objects as a Map<MultiKey, List<Result>> 
+     * Returns the {@code Result} objects as a List<Map<MultiKey, List<Result>>> 
      * The keys are multiKey setup on top of the classifier pixel values. For each of them,
      * a List of {@code Result}s is provided. In case of classified stats against local ranges,
      * the list will contain the Result for each range.
+     * The outer list allows to group results by pivot. In case no pivot classifiers 
+     * have been specified, the list will be a singleton and user should always get element 0. 
      *
      * @return the results
      * @see Result

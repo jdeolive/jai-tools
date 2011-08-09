@@ -128,6 +128,91 @@ public class ClassifiedStatsTest {
         
     }
     
+    
+    @Test
+//  @Ignore
+  public void testClassificationWithPivot() throws IOException {
+      if (LOGGER.isLoggable(Level.INFO)) {
+              LOGGER.info("   test classification");
+      }
+      InputStream sample = null;
+      InputStream classifier1 = null;
+      InputStream classifierStripes = null;
+      InputStream classifierLines = null;
+      try {
+          sample = ClassifiedStatsTest.class.getResourceAsStream("sample.tif");
+          RenderedImage sampleImage = ImageIO.read(sample);
+          classifier1 = ClassifiedStatsTest.class.getResourceAsStream("mask1.tif");
+          RenderedImage classifierImage = ImageIO.read(classifier1);
+          classifierStripes = ClassifiedStatsTest.class.getResourceAsStream("5stripes.tif");
+          RenderedImage stripedImage = ImageIO.read(classifierStripes);
+          classifierLines = ClassifiedStatsTest.class.getResourceAsStream("5lines.tif");
+          RenderedImage linedImage = ImageIO.read(classifierLines);
+          
+          ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
+          pb.addSource(sampleImage);
+          pb.setParameter("classifiers", new RenderedImage[]{classifierImage});
+          pb.setParameter("pivotClassifiers", new RenderedImage[]{stripedImage, linedImage});
+          pb.setParameter("stats", new Statistic[]{Statistic.MIN, Statistic.MAX, Statistic.RANGE, Statistic.SUM});
+          pb.setParameter("bands", new Integer[]{0});
+  
+          RenderedOp op = JAI.create("ClassifiedStats", pb);
+          ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
+  
+          List<Map<MultiKey, List<Result>>> results = stats.results();
+          for (int i = 0; i < results.size(); i++){
+              System.out.println("Stats for pivot " + i + ": " + 
+                      (i == 0 ? "stripes [1-5, step1]": "verticalLines [51-255, step 51]"));
+              Map<MultiKey, List<Result>> result_i = results.get(i); 
+              Set<MultiKey> multikeys = result_i.keySet();
+              Iterator<MultiKey> it = multikeys.iterator();
+              while (it.hasNext()) {
+                  MultiKey key = it.next(); 
+                  List<Result> rs = result_i.get(key);
+                  for (Result r: rs){
+                      System.out.println(r.toString());
+                  }
+              }
+          }
+          
+      } finally {
+          if (sample != null){
+              try {
+                  sample.close();
+              } catch (Throwable t){
+                  
+              }
+          }
+          
+          if (classifier1 != null){
+              try {
+                  classifier1.close();
+              } catch (Throwable t){
+                  
+              }
+          }
+          
+          if (classifierStripes != null){
+              try {
+                  classifierStripes.close();
+              } catch (Throwable t){
+                  
+              }
+          }
+          
+          if (classifierLines!= null){
+              try {
+                  classifierLines.close();
+              } catch (Throwable t){
+                  
+              }
+          }
+      }
+      
+//      System.out.println(classifiedResult.get(0).getStatistic());
+      
+  }
+    
     @Test
 //    @Ignore
     public void testClassificationWithLocalRanges() throws IOException {

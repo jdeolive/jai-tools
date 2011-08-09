@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,7 +150,14 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      *            a {@code RenderedImage}'s array of integral data type that
      *            defines the classification for which to calculate summary
      *            data.
-     * 
+     * @param pivotClassifierImages
+     *            an optional {@code RenderedImage}'s array of integral data type that
+     *            defines the pivot classification for which to calculate summary
+     *            data. Elements of this array are used to form group with the standard 
+     *            classifiers. As an instance, suppose the classifiers are [classifier1,
+     *            classifier2] and the pivot classifiers are [pivot1, pivot2], then the
+     *            stats will be computed on classifiers [pivot1, classifier1, classifier2]
+     *            and [pivot2, classifier1, classifier2]. 
      * @param config
      *            configurable attributes of the image (see {@link AreaOpImage}
      *            ).
@@ -191,7 +197,14 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      *            classifier images will always leverage on integer types 
      *            (BYTE, INTEGER, SHORT, ...). Such noData are specified
      *            as Double to allow the users to provide NaN in case a NoData
-     *            is unavailable for the related classifierImage.
+     *            is unavailable for a specific classifierImage.
+     * @param noDataPivotClassifiers
+     *            an optional array of Doubles defining values to
+     *            treat as NODATA for the related pivotClassifierImage. Note that 
+     *            classifier images will always leverage on integer types 
+     *            (BYTE, INTEGER, SHORT, ...). Such noData are specified
+     *            as Double to allow the users to provide NaN in case a NoData
+     *            is unavailable for a specific pivotClassifierImage.
      * 
      * @see ClassifiedStatsDescriptor
      * @see Statistic
@@ -293,6 +306,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         final RandomIter dataIter = RandomIterFactory.create(dataImage, dataImageBounds);
         final int numClassifiers = classifierImages.length;
         final int numPivotClassifiers = pivotClassifierImages != null ? pivotClassifierImages.length : 0;
+        
+        // Standard Classifiers
         final ClassifierObject[] classifiers = new ClassifierObject[numClassifiers];
         for (int i = 0; i < numClassifiers; i++) {
             final RandomIter classifierIter = RandomIterFactory.create(classifierImages[i], dataImageBounds);
@@ -302,6 +317,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             classifiers[i] = new ClassifierObject(classifierIter, checkForNoData, noDataClassifierValue);
         }
         
+        //Pivot Classifiers
         final ClassifierObject[] pivotClassifiers = numPivotClassifiers > 0 ? new ClassifierObject[numPivotClassifiers] : null;
         for (int i = 0; i < numPivotClassifiers; i++) {
             final RandomIter classifierIter = RandomIterFactory.create(pivotClassifierImages[i], dataImageBounds);
@@ -385,6 +401,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results = CollectionFactory.sortedMap();
         final int numPivots = pivotClassifiers != null ? pivotClassifiers.length : 0;
         for (Integer srcBand : srcBands) {
+            // If pivots are present, grouping the results by pivot
             if (numPivots > 0){
                 List<Map<MultiKey, StreamingSampleStats>> pivotLists = 
                     new ArrayList<Map<MultiKey,StreamingSampleStats>>(numPivots);
@@ -394,6 +411,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                 }
                 results.put(srcBand, pivotLists);                
             } else {
+                // No pivots at all, results as singleton list
                 Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
                 List<Map<MultiKey, StreamingSampleStats>> singleElement = Collections.singletonList(resultsPerBand);
                 results.put(srcBand, singleElement);   
@@ -407,6 +425,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         // //
         Type localRangeType = Range.Type.EXCLUDE;
         List<Range<Double>> localRanges = ranges;
+        
         // //
         //
         // Iterate
@@ -508,22 +527,37 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     }
 
     /**
-     * Compute statistics looping along tiles.
-     * 
      * @param dataIter
-     * @param numClassifiers
-     * @param classIter
-     * @param checkClassifiers
-     * @param noDataClassifierValues
-     * @param localRangeType
-     * @param localRanges
-     * @param results
+     *            an iterator related to the data input.
+     * 
+     * @param classifiers
+     *            a {@code ClassifierObject}'s array of integral data type that
+     *            defines the classification for which to calculate summary
+     *            data.
+     * @param pivotClassifiers
+     *            a {@code ClassifierObject}'s array of integral data type that
+     *            defines the pivot classification for which to calculate summary
+     *            data. Elements of this array are used to form group with the standard 
+     *            classifiers. As an instance, suppose the classifiers are [classifier1,
+     *            classifier2] and the pivot classifiers are [pivot1, pivot2], then the
+     *            stats will be computed on classifiers [pivot1, classifier1, classifier2]
+     *            and [pivot2, classifier1, classifier2]. It could be null when no pivot
+     *            are used. 
+     * @param ranges
+     *            an optional list of {@link Range} objects defining values to
+     *            include or exclude (depending on {@code rangesType} from the
+     *            calculations; may be {@code null} or empty
+     * 
+     * @param rangesType
+     *            specifies whether the {@code ranges} argument defines values
+     *            to include or exclude
+     * 
      */
     private void computeStatsOnTiles( 
             final RandomIter dataIter,
             final ClassifierObject[] classifiers,
             final ClassifierObject[] pivotClassifiers, 
-            final Type localRangeType, List<Range<Double>> localRanges, 
+            final Type rangesType, List<Range<Double>> ranges, 
 //            final Map<Integer, Map<MultiKey, StreamingSampleStats>> results
             Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results
             ) {
@@ -548,7 +582,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                 if (roi == null || roi.contains(col, row)) {
                                     // Check for noData on classifier Images
                                     // in case a classifier will refer to a noData pixel
-                                    // skip the stat for it.
+                                    // skip the stat computation for it.
                                     boolean skipStats = false;
                                     for (int i = 0; i < numClassifiers; i++) {
                                         keys[i+pivotClassifiersIncrement] = classifiers[i].classifierIter.getSample(col, row, 0);
@@ -586,7 +620,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                             MultiKey mk = createMultiKey(keys);
                                             StreamingSampleStats sss = keyedElement.get(mk);
                                             if (sss == null) {
-                                                sss = setupStats(keyedElement, mk, localRangeType, localRanges);
+                                                sss = setupStats(keyedElement, mk, rangesType, ranges);
                                             }
                                             sss.offer(sampleValues[band]);
                                             i++;
@@ -600,9 +634,15 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                 }
             }
         }
-        
     }
     
+    /**
+     * Create a {@link MultiKey} object on top of the specified Keys array.
+     * Use the multi input value when possible (to avoid cloning).
+     * 
+     * @param keys
+     * @return a {@link MultiKey} instance set on top of the keys.
+     */
     private final static MultiKey createMultiKey(Integer[] keys) {
         final int nKeys = keys.length;
         switch (nKeys){

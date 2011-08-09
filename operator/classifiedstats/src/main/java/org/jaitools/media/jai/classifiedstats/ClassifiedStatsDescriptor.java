@@ -98,7 +98,7 @@ import org.jaitools.numeric.Statistic;
  * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
  *
  * // print results to console
- * Map<MultiKey, List<Result>> results = stats.results();
+ * Map<MultiKey, List<Result>> results = stats.results().get(0);
  * Set<MultiKey> multik = results.keySet();
  * Iterator<MultiKey> it = multik.iterator();
  * while (it.hasNext()) {
@@ -114,6 +114,29 @@ import org.jaitools.numeric.Statistic;
  * you to examine results by image band, classifier key, statistic, range.
  *
  *
+ * Optionally, you can also specify pivotClassifiers (when more then one is needed).
+ * Pivots are classifiers which should be used to form different groups containing the same common 
+ * classifiers and only a disting classifier.
+ * As an instance, suppose you have classifiers like [age, job, sex] and classifiers like
+ * [country, district, town]. Then you need to do 3 classified stats like this:<BR>
+ * - country, age, job, sex<BR>
+ * - district, age, job, sex<BR>
+ * - town, age, job, sex<BR>   
+ * 
+ * You can specify a pivotClassifiers parameter with [country, district, town] and the standard
+ * classifiers parameter with [age, job, sex]. Optionally you can also specify noData for pivot 
+ * classifiers (make sure to respect the proper order: first NoData of the array refers to the first
+ * pivot classifier, second NoData of the array refers to the second pivot classifier,...)
+ * 
+ * As output, you will get the List of results where the i-th element is related to the 
+ * classified stats computed on top of the i-th pivot element
+ *  
+ * <pre><code>
+ * List<Map<MultiKey, List<Result>>> results = stats.results();
+ * Map<MultiKey, List<Result>> pivot0Results = results.get(0);
+ * Map<MultiKey, List<Result>> pivot1Results = results.get(1);
+ * Map<MultiKey, List<Result>> pivot2Results = results.get(2);
+ * </code></pre>
  *
  * <b>Parameters</b>
  * <table border="1">
@@ -125,6 +148,17 @@ import org.jaitools.numeric.Statistic;
  * <td>classifier images to be used in computations</td>
  * <td>NO DEFAULT although this parameter is mandatory</td>
  * </tr>
+ * <tr>
+ * <td>pivotClassifiers</td><td>RenderedImage[]</td>
+ * <td>optional pivot classifier images to be used in computations.
+ * Elements of this array are used to form group with the standard 
+ * classifiers. As an instance, suppose the classifiers are [classifier1, 
+ * classifier2] and the pivot classifiers are [pivot1, pivot2], then the 
+ * stats will be computed on classifiers [pivot1, classifier1, classifier2] 
+ * and [pivot2, classifier1, classifier2]. </td>
+ * <td>null</td>
+ * </tr>
+ *
  * <tr>
  * <td>stats</td><td>Statistic[]</td><td>Statistics to calculate</td><td>NO DEFAULT</td>
  * </tr>
@@ -164,6 +198,18 @@ import org.jaitools.numeric.Statistic;
  * 1 and 4 (starting from index 0).
  * </td><td>null (no NODATA values defined)</td>
  * </tr>
+ * <tr>
+ * <td>noDataPivotClassifiers</td><td>Double[]</td>
+ * <td>NoData specific for pivot image classifiers. The order of the noData elements of the array
+ * shall respect the order of the elements within the pivot image classifiers array. 
+ * NoData are specified as Double although they refer to pivot classifiers images which are of 
+ * integer types. Using a Double allows to specifiy NaN in case some specific noData entries
+ * aren't unavailable for some pivot classifier images. As an instance 
+ * [-9999, Double.NaN, -32768, 0, Double.NaN] in case there isn't any noData for pivotClassifierImage 
+ * 1 and 4 (starting from index 0).
+ * </td><td>null (no NODATA values defined)</td>
+ * </tr>
+
  * </table>
  *
  * @see Result
@@ -541,6 +587,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             }
         } 
         
+        // CHECKING NODATA FOR CLASSIFIERS 
         Object noDataClassifierArg = pb.getObjectParameter(NODATA_CLASSIFIER_ARG);
         Double[] noDataClassifier = null;
         if (noDataClassifierArg != null){
@@ -557,6 +604,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             }
         }
         
+        // CHECKING NODATA FOR PIVOT CLASSIFIERS
         Object noDataPivotClassifierArg = pb.getObjectParameter(NODATA_PIVOT_CLASSIFIER_ARG);
         Double[] noDataPivotClassifier = null;
         if (noDataPivotClassifierArg != null){
