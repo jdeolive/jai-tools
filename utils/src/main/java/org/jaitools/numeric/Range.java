@@ -98,10 +98,12 @@ public class Range<T extends Number & Comparable> {
     private static final int NAN = -9999;
 
     private T minValue;
+    private double minValueAsDouble;
     private boolean minIncluded;
     private boolean minOpen;
     private int minType;
     private T maxValue;
+    private double maxValueAsDouble;
     private boolean maxIncluded;
     private boolean maxOpen;
     private int maxType;
@@ -216,6 +218,9 @@ public class Range<T extends Number & Comparable> {
 
         if (minType == FINITE) {
             this.minValue = minValue;
+            if (minValue instanceof Double){
+                minValueAsDouble = (Double)minValue;
+            }
             this.minOpen = false;
             this.minIncluded = minIncluded;
         } else {
@@ -256,6 +261,10 @@ public class Range<T extends Number & Comparable> {
 
         if (maxType == FINITE) {
             this.maxValue = maxValue;
+            if (maxValue instanceof Double){
+                maxValueAsDouble = (Double)maxValue;
+            }
+
             this.maxOpen = false;
             this.maxIncluded = maxIncluded;
         } else {
@@ -359,6 +368,12 @@ public class Range<T extends Number & Comparable> {
 
         if (bound == FINITE) {
             this.maxValue = this.minValue = value;
+            if (maxValue instanceof Double){
+                maxValueAsDouble = (Double)maxValue;
+            }
+            if (minValue instanceof Double){
+                minValueAsDouble = (Double)minValue;
+            }
             this.maxType = this.minType = FINITE;
             this.maxOpen = this.minOpen = false;
             this.maxIncluded = this.minIncluded = true;
@@ -392,6 +407,12 @@ public class Range<T extends Number & Comparable> {
         this.maxOpen = other.maxOpen;
         this.maxType = other.maxType;
         this.isPoint = other.isPoint;
+        if (maxValue instanceof Double){
+            maxValueAsDouble = (Double)maxValue;
+        }
+        if (minValue instanceof Double){
+            minValueAsDouble = (Double)minValue;
+        }
     }
 
     /**
@@ -589,6 +610,50 @@ public class Range<T extends Number & Comparable> {
             return true;
         }
     }
+    
+    
+    /**
+     * Tests if this range contains the specified, non-null value.
+     * 
+     * @param value the value
+     * @return {@code true} if the value is within this range; {@code false} otherwise
+     */
+    public boolean containsDoubleSkipNaNCheck(double value) {
+        if (isPoint) {
+            if (minType == FINITE) {
+                return NumberOperations.doubleComparisonSkipNaNCheck(value, minValueAsDouble) == 0;
+
+            } else if (minType == NAN) {
+                    return Double.isNaN(value);
+            } else {
+                return false;
+            }
+
+        } else {
+            // NaN values are always outside a proper interval
+            if (Double.isNaN(value)) {
+                return false;
+            }
+            
+            int comp;
+            if (minValue != null) {
+                comp = NumberOperations.doubleComparisonSkipNaNCheck(value, minValueAsDouble);
+                if (comp < 0 || (!minIncluded && comp == 0)) {
+                    return false;
+                }
+            }
+
+            if (maxValue != null) {
+                comp = NumberOperations.doubleComparisonSkipNaNCheck(value, maxValueAsDouble);
+                if (comp > 0 || (!maxIncluded && comp == 0)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+    }
+
 
     /**
      * Tests if this range intersects another range. Two ranges intersect if

@@ -295,7 +295,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
      * 
      * @return the results as a new instance of {@code ClassifiedStats}
      */
-    private synchronized ClassifiedStats compileStatistics() {
+    synchronized ClassifiedStats compileStatistics() {
         ClassifiedStats classifiedStats = null;
 
         // //
@@ -494,7 +494,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         for (Range<Double> range : rangesList) {
             Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results = CollectionFactory.sortedMap();
             for (int index = 0; index < srcBands.length; index++) {
-                Map<MultiKey, StreamingSampleStats> resultsPerBand = new HashMap<MultiKey, StreamingSampleStats>();
+                Map<MultiKey, StreamingSampleStats> resultsPerBand = 
+                    new HashMap<MultiKey, StreamingSampleStats>();
                 results.put(index, Collections.singletonList(resultsPerBand));
 
             }

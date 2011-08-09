@@ -904,4 +904,44 @@ public class NumberOperations {
         return Double.valueOf(value);
     }
 
+    
+    /**
+     * Compare two values as double using the currently set tolerance
+     *
+     * @param n1 first value
+     * @param n2 second value
+     *
+     * @return -1 if the first value is less than the second; 1 if the
+     *         first value is greater than the second; 0 if the two values
+     *         are equal
+     */
+    private static int simpleCompare(double val1, double val2) {
+        int result;
+        if (Math.abs(val1 - val2) < doubleTol) {
+            result = 0;
+        } else {
+            result = (val1 < val2 ? -1 : 1);
+        }
+
+        return result;
+    }
+
+    /**
+     * Compare two values as double using the currently set tolerance. 
+     * Doesn't check for NaN on the firstValue
+     *
+     * @param n1 first value
+     * @param n2 second value
+     *
+     * @return -1 if the first value is less than the second; 1 if the
+     *         first value is greater than the second; 0 if the two values
+     *         are equal
+     */
+    public static int doubleComparisonSkipNaNCheck(double val1, double val2) {
+        if (Double.isInfinite(val1) ||
+            Double.isInfinite(val2) || Double.isNaN(val2)) {
+            return Double.compare(val1, val2);
+        }
+        return simpleCompare(val1, val2);
+    }
 }

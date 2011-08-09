@@ -237,7 +237,7 @@ public abstract class AbstractProcessor implements Processor {
 
         if (noDataRanges != null){
             for (Range<Double> r : noDataRanges) {
-                if (r.contains(sample)) {
+                if (r.containsDoubleSkipNaNCheck(sample)) {
                     numNoData++;
                     return false;
                 }
@@ -252,10 +252,10 @@ public abstract class AbstractProcessor implements Processor {
         for (Range<Double> r : ranges) {
             switch (rangesType) {
                 case EXCLUDE:
-                    isAccepted &= !r.contains(sample);
+                    isAccepted &= !r.containsDoubleSkipNaNCheck(sample);
                     break;
                 case INCLUDE:
-                    isAccepted |= r.contains(sample);
+                    isAccepted |= r.containsDoubleSkipNaNCheck(sample);
                     break;
             }
         }

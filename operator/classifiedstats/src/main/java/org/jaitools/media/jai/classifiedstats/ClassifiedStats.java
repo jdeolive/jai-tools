@@ -121,7 +121,8 @@ public class ClassifiedStats {
      * Store the results for the given classificationKey. Package-private method used by
      * {@code ClassifiedStatsOpImage}.
      */
-    void setResults(int band, int pivotIndex, MultiKey classificationKey, StreamingSampleStats stats, List<Range<Double>> ranges) {
+    void setResults(int band, int pivotIndex, MultiKey classificationKey, 
+            StreamingSampleStats stats, List<Range<Double>> ranges) {
 
         //First preliminary check on an already populated list of results for that key
         Map<MultiKey, List<Result>> group = null;
