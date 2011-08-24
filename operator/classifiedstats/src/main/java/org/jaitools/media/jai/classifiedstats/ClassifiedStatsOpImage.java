@@ -604,7 +604,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                     
                                     //Offer values to statistics operations                                    
                                     for (Integer band : srcBands) {
-                                        sampleValues[band] = dataIter.getSample(col, row, band);
+                                        sampleValues[band] = dataIter.getSampleDouble(col, row, band);
                                         List<Map<MultiKey, StreamingSampleStats>> resultPerBand = results.get(band);
                                         boolean goOn = true;
                                         int i = 0;
