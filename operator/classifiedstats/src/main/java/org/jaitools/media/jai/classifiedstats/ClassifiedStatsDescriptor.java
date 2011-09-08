@@ -354,7 +354,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                     String.format("%s (default %s) - an optional Array of values "
                         + "defining values to treat as NODATA from the pivot classifier raster inputs\n" 
                         + "the i-th element of the array refers to the i-th pivot classifier raster source",
-                        paramNames[NODATA_CLASSIFIER_ARG], paramDefaults[NODATA_PIVOT_CLASSIFIER_ARG])},
+                        paramNames[NODATA_PIVOT_CLASSIFIER_ARG], paramDefaults[NODATA_PIVOT_CLASSIFIER_ARG])},
                                 
                                 
                         
