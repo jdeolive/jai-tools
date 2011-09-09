@@ -135,7 +135,7 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
         items = CollectionFactory.list();
         this.defaultValue = defaultValue;
         this.overlapAllowed = overlap;
-        this.preserveSources=preserveSources;
+        this.preserveSources = preserveSources;
     }
     
     /**
@@ -156,12 +156,12 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      * 
      * @param overlap whether to allow overlapping ranges to be added to the table
      */
-    public RangeLookupTable(boolean preserveSources, boolean overlap) {
-        initialize(null, preserveSources,preserveSources);
+    public RangeLookupTable(boolean overlap, boolean preserveSources) {
+        initialize(null, overlap, preserveSources);
     }
     
     public RangeLookupTable(boolean preserveSources) {
-        initialize(null, DEFAULT_VALUE_OVERLAP_ALLOWED,preserveSources);
+        initialize(null, DEFAULT_VALUE_OVERLAP_ALLOWED, preserveSources);
     }
 
     /**
