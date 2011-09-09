@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.jaitools.CollectionFactory;
+import org.jaitools.numeric.NumberOperations;
 import org.jaitools.numeric.Range;
 import org.jaitools.numeric.RangeUtils;
 
@@ -45,12 +46,23 @@ import org.jaitools.numeric.RangeUtils;
  * @version $Id$
  */
 public class RangeLookupTable<T extends Number & Comparable<? super T>, U extends Number & Comparable<? super U>> {
+    
+    public static final boolean DEFAULT_VALUE_PRESERVE_SOURCES=false;
+    
+    public static final boolean DEFAULT_VALUE_OVERLAP_ALLOWED=true;
+    
+    /** Whether to preserve source values that falls outside the defined ranges. 
+     * <p>
+     * Default behavior is to throw an exception in case no default is provided. this 
+     * member can be used to change this and reuse sources instead.
+     * */
+    private boolean preserveSources =DEFAULT_VALUE_PRESERVE_SOURCES;
 
     /** Value returned when lookup value is outside all ranges. */
     private U defaultValue = null;
     
     /** Whether to allow overlapping lookup ranges to be added to the table. */
-    private boolean overlapAllowed;
+    private boolean overlapAllowed= DEFAULT_VALUE_OVERLAP_ALLOWED;
     
     /** Lookup items */
     private List<LookupItem<T, U>> items;
@@ -61,6 +73,8 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      */
     private LookupItem<T, U> lastItem = null;
 
+    private Class<? extends Number> targetClass;
+    
     /**
      * Creates a new table with no default value. The table 
      * will throw an IllegalArgumentException if a lookup value cannot
@@ -83,7 +97,9 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      *        disable the default
      */
     public RangeLookupTable(U defaultValue) {
-        this(defaultValue, true);
+        initialize(defaultValue, DEFAULT_VALUE_OVERLAP_ALLOWED,DEFAULT_VALUE_PRESERVE_SOURCES);
+        if(defaultValue!=null)
+            targetClass = defaultValue.getClass();
     }
     
     /**
@@ -105,9 +121,47 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      * @param overlap whether to allow overlapping ranges to be added to the table
      */
     public RangeLookupTable(U defaultValue, boolean overlap) {
+        initialize(defaultValue, overlap,DEFAULT_VALUE_PRESERVE_SOURCES);
+    }
+
+    /**
+     * Initialize this {@link RangeLookupTest} instance.
+     * 
+     * @param defaultValue
+     * @param overlap
+     * @param preserveSources
+     */
+    private void initialize(U defaultValue, boolean overlap, boolean preserveSources) {
         items = CollectionFactory.list();
         this.defaultValue = defaultValue;
         this.overlapAllowed = overlap;
+        this.preserveSources=preserveSources;
+    }
+    
+    /**
+     * Creates a new table with specified default value and overlapping range
+     * behaviour. 
+     * <p>
+     * If {@code defaultValue} is not {@code null} it will be returned when a
+     * lookup value cannot be matched; otherwise an unmatched value results in
+     * an {@code IllegalArgumentException}.
+     * <p>
+     * If {@code overlap} is {@code true}, adding a new lookup range that overlaps
+     * existing ranges will result in the new range being reduced to its
+     * non-overlapping intervals, if any; if {@code false} adding an overlapping
+     * range will result in an {@code IllegalArgumentException}.
+     * 
+     * @param defaultValue the default destination value or {@code null} to
+     *        disable the default
+     * 
+     * @param overlap whether to allow overlapping ranges to be added to the table
+     */
+    public RangeLookupTable(boolean preserveSources, boolean overlap) {
+        initialize(null, preserveSources,preserveSources);
+    }
+    
+    public RangeLookupTable(boolean preserveSources) {
+        initialize(null, DEFAULT_VALUE_OVERLAP_ALLOWED,preserveSources);
     }
 
     /**
@@ -193,6 +247,9 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
             throw new IllegalArgumentException("arguments must not be null");
         }
         
+        if(targetClass==null)
+            targetClass=destValue.getClass();
+        
         // Check for overlap with existing ranges
         for (LookupItem item : items) {
             if (range.intersects(item.range)) {
@@ -222,6 +279,7 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      * of the ranges held by this table and the table was created without a default
      * destination image value
      */
+    @SuppressWarnings("unchecked")
     public U getDestValue(T srcValue) {
         if (lastItem != null) {
             if (lastItem.range.contains(srcValue)) {
@@ -241,9 +299,13 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
         if (defaultValue != null) {
             return defaultValue;
         } else {
-            throw new IllegalArgumentException("Value cannot be matched: " + srcValue);
+            if(!preserveSources)
+                throw new IllegalArgumentException("Value cannot be matched: " + srcValue);
+            else
+                return (U) NumberOperations.castNumber(srcValue, targetClass);
         }
     }
+
 
     @Override
     public String toString() {

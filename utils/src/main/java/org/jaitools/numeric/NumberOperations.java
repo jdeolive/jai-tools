@@ -506,9 +506,21 @@ public class NumberOperations {
      */
     public static Number newInstance(Number number, Class<? extends Number> clazz) {
         ClassInfo ci = ClassInfo.get(clazz);
-        return newInstance(number, ci);
+        return newInstance(number, ci,false);
     }
-
+    /**
+     * Cast the value from {@code number} to the class {@code clazz}  
+     *
+     * @param number the number object whose value will be copied
+     * @param clazz the class of the new instance
+     *
+     * @return a new instance of the request class with value {@code number}
+     */
+    public static Number castNumber(Number number, Class<? extends Number> clazz) {
+        ClassInfo ci = ClassInfo.get(clazz);
+        return newInstance(number, ci,true);
+    }
+    
     /**
      * Return a new instance of the class described by {@code ci} taking its value 
      * from {@code number}
@@ -519,23 +531,48 @@ public class NumberOperations {
      * @return a new instance of the request class with value {@code number}
      */
     private static Number newInstance(Number number, ClassInfo ci) {
+        return newInstance(number, ci,false);
+    }
+    
+    /**
+     * Return a new instance of the class described by {@code ci} taking its value 
+     * from {@code number}
+     *
+     * @param number the number object whose value will be copied
+     * @param ci a ClassInfo object
+     *
+     * @return a new instance of the request class with value {@code number}
+     */
+    private static Number newInstance(Number number, ClassInfo ci, boolean dontCopy) {
         switch (ci) {
             case BYTE:
+                if(number.getClass()== Byte.class)
+                    return dontCopy?number:Byte.valueOf(number.byteValue());
                 return newByte(number);
 
             case SHORT:
+                if(number.getClass()== Short.class)
+                    return dontCopy?number:Short.valueOf(number.shortValue());                
                 return newShort(number);
 
             case INTEGER:
+                if(number.getClass()== Integer.class)
+                    return dontCopy?number:Integer.valueOf(number.intValue());                
                 return newInteger(number);
 
             case LONG:
+                if(number.getClass()== Long.class)
+                    return dontCopy?number:Long.valueOf(number.longValue());                
                 return newLong(number);
 
             case FLOAT:
+                if(number.getClass()== Float.class)
+                    return dontCopy?number:Float.valueOf(number.floatValue());                
                 return newFloat(number);
 
             case DOUBLE:
+                if(number.getClass()== Double.class)
+                    return dontCopy?number:Double.valueOf(number.doubleValue());                
                 return newDouble(number);
 
             default:

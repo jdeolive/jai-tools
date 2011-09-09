@@ -61,12 +61,40 @@ public class RangeLookupTest extends TestBase {
     }
     
     @Test
+    public void byteToBytePreserve() {
+        System.out.println("   byte source to byte destination, preserving sources");
+        Byte[] breaks = { 2, 4, 6, 8 };
+        Byte[] values = { 0, 1, 2, 3, 4 };
+        RenderedImage srcImg = createByteTestImage((byte)0);
+        assertLookup(breaks, values, srcImg, DataBuffer.TYPE_BYTE,true);
+    }
+    
+    
+    @Test
     public void byteToShort() {
         System.out.println("   byte source to short destination");
         Byte[] breaks = { 2, 4, 6, 8 };
         Short[] values = { -50, -10, 0, 10, 50 };
         RenderedImage srcImg = createByteTestImage((byte)0);
         assertLookup(breaks, values, srcImg, DataBuffer.TYPE_SHORT);
+    }
+    
+    @Test
+    public void byteToShortPreserve() {
+        System.out.println("   byte source to short destination, preserving sources");
+        Byte[] breaks = { 2, 4, 6, 8 };
+        Short[] values = { -50, -10, 0, 10, 50 };
+        RenderedImage srcImg = createByteTestImage((byte)0);
+        assertLookup(breaks, values, srcImg, DataBuffer.TYPE_SHORT,true);
+    }
+    
+    @Test
+    public void byteToIntPreserve() {
+        System.out.println("   byte source to int destination, preserving sources");
+        Byte[] breaks = { 2, 4, 6, 8 };
+        Integer[] values = { -50, -10, 0, 10, 50 };
+        RenderedImage srcImg = createByteTestImage((byte)0);
+        assertLookup(breaks, values, srcImg, DataBuffer.TYPE_INT,true);
     }
     
     @Test
@@ -78,6 +106,7 @@ public class RangeLookupTest extends TestBase {
         assertLookup(breaks, values, srcImg, DataBuffer.TYPE_INT);
     }
     
+    
     @Test
     public void byteToFloat() {
         System.out.println("   byte source to float destination");
@@ -85,6 +114,15 @@ public class RangeLookupTest extends TestBase {
         Float[] values = { -50f, -10f, 0f, 10f, 50f };
         RenderedImage srcImg = createByteTestImage((byte)0);
         assertLookup(breaks, values, srcImg, DataBuffer.TYPE_FLOAT);
+    }
+    
+    @Test
+    public void byteToFloatPreserve() {
+        System.out.println("   byte source to float destination, preserving sources");
+        Byte[] breaks = { 2, 4, 6, 8 };
+        Float[] values = { -50f, -10f, 0f, 10f, 50f };
+        RenderedImage srcImg = createByteTestImage((byte)0);
+        assertLookup(breaks, values, srcImg, DataBuffer.TYPE_FLOAT,true);
     }
     
     @Test
@@ -372,7 +410,26 @@ public class RangeLookupTest extends TestBase {
                     RenderedImage srcImg,
                     int destDataType) {
         
-        RangeLookupTable<T, U> table = createTable(breaks, values);
+        assertLookup(breaks, values, srcImg, destDataType, false);
+    }
+    
+    /**
+     * Runs the lookup operation and tests destination image values.
+     *
+     * @param breaks source image breakpoints
+     * @param values lookup values
+     * @param srcImg source image
+     * @param destDataType expected destination image data type
+     */
+    private <T extends Number & Comparable<? super T>, 
+             U extends Number & Comparable<? super U>>
+            void assertLookup(
+                    T[] breaks, U[] values, 
+                    RenderedImage srcImg,
+                    int destDataType,
+                    boolean preserveSources) {
+        
+        RangeLookupTable<T, U> table = createTable(breaks, values,!preserveSources);
         RenderedOp destImg = doOp(srcImg, table);
 
         // check data type
@@ -479,7 +536,6 @@ public class RangeLookupTest extends TestBase {
      * @return  the test image
      */
     private RenderedImage createTestImage(Number startVal, Number[] data) {
-        final int N = WIDTH * WIDTH;
         Number value = startVal;
         Number delta = NumberOperations.newInstance(1, startVal.getClass());
         for (int i = 0; i < data.length; i++) {

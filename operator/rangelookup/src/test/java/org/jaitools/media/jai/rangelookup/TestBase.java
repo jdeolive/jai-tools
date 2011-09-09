@@ -44,7 +44,7 @@ public abstract class TestBase {
      */
     protected <T extends Number & Comparable<? super T>, 
              U extends Number & Comparable<? super U>> 
-            RangeLookupTable<T, U> createTable(T[] breaks, U[] values) {
+            RangeLookupTable<T, U> createTable(T[] breaks, U[] values, boolean infinite) {
         
         final int N = breaks.length;
         if (values.length != N + 1) {
@@ -52,21 +52,38 @@ public abstract class TestBase {
                     "values array length should be breaks array length + 1");
         }
         
-        RangeLookupTable<T, U> table = new RangeLookupTable<T, U>();
+        RangeLookupTable<T, U> table = new RangeLookupTable<T, U>(!infinite);
         Range<T> r;
         
-        r = Range.create(null, false, breaks[0], false);
-        table.add(r, values[0]);
-        
+        if(infinite){
+            r = Range.create(null, false, breaks[0], false);
+            table.add(r, values[0]);
+        }
         for (int i = 1; i < N; i++) {
             r = Range.create(breaks[i-1], true, breaks[i], false);
             table.add(r, values[i]);
         }
         
-        r = Range.create(breaks[N-1], true, null, false);
-        table.add(r, values[N]);
+        if(infinite){
+            r = Range.create(breaks[N-1], true, null, false);
+            table.add(r, values[N]);
+        }
         
         return table;
+    }
+    
+    /**
+     * Creates a lookup table.
+     * @param breaks array of breakpoints for source image values
+     * @param values array of lookup values for destination image value
+     * 
+     * @return the lookup table
+     */
+    protected <T extends Number & Comparable<? super T>, 
+             U extends Number & Comparable<? super U>> 
+            RangeLookupTable<T, U> createTable(T[] breaks, U[] values) {
+        
+        return createTable(breaks, values, true);
     }
 
 }

@@ -66,6 +66,20 @@ public class RangeLookupTableTest extends TestBase {
     }
     
     @Test
+    public void preserveSource() throws Exception {
+        System.out.println("   preserve source values");
+        
+        RangeLookupTable<Integer, Integer> table = new RangeLookupTable<Integer, Integer>(true);
+        table.add(Range.create(5, false, 15, false), 1);
+        
+        for (int val = 0; val <= 20; val++) {
+            int expected = val > 5 && val < 15 ? 1 : val; 
+            int destVal = table.getDestValue(val);
+            assertEquals(expected, destVal);
+        }
+    }
+    
+    @Test
     public void defaultValue() throws Exception {
         System.out.println("   default lookup value");
         
