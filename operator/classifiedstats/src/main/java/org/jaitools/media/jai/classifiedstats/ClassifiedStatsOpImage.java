@@ -574,10 +574,10 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         // Loop over tiles
         for (int tileY = imageMinTileY; tileY <= imageMaxTileY; tileY++) {
             for (int tileX = imageMinTileX; tileX <= imageMaxTileX; tileX++) {
-                for (int tRow = 0; tRow < imageTileWidth; tRow++) {
+                for (int tRow = 0; tRow < imageTileHeight; tRow++) {
                     int row = tileY * imageTileHeight + tRow;
                     if (row >= imageMinY && row <= imageMaxY) {
-                        for (int tCol = 0; tCol < imageTileHeight; tCol++) {
+                        for (int tCol = 0; tCol < imageTileWidth; tCol++) {
                             int col = tileX * imageTileWidth + tCol;
                             if (col >= imageMinX && col <= imageMaxX) {
                                 if (roi == null || roi.contains(col, row)) {

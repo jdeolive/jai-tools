@@ -97,9 +97,10 @@ public class RangeLookupTable<T extends Number & Comparable<? super T>, U extend
      *        disable the default
      */
     public RangeLookupTable(U defaultValue) {
-        initialize(defaultValue, DEFAULT_VALUE_OVERLAP_ALLOWED,DEFAULT_VALUE_PRESERVE_SOURCES);
-        if(defaultValue!=null)
+        initialize(defaultValue, DEFAULT_VALUE_OVERLAP_ALLOWED, DEFAULT_VALUE_PRESERVE_SOURCES);
+        if (defaultValue != null){
             targetClass = defaultValue.getClass();
+        }
     }
     
     /**
