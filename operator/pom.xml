@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jaitools</groupId>
         <artifactId>jaitools</artifactId>
-        <version>1.2-GAEZM09092011</version>
+        <version>1.2-GAEZM15092011</version>
     </parent>
 
     <artifactId>operator</artifactId>
