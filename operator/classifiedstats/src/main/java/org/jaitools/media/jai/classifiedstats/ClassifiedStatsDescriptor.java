@@ -42,7 +42,7 @@ import org.jaitools.numeric.RangeUtils;
 import org.jaitools.numeric.Statistic;
 
 /**
- * Calculates a number of summary statistics, for the whole data image. 
+ * Calculates a number of classified summary statistics, for the whole data image. 
  * Optionally, an ROI can be provided to constrain which areas of the data image
  * will be sampled for calculation of statistics.
  * <p>
@@ -74,11 +74,65 @@ import org.jaitools.numeric.Statistic;
  * As well as being excluded from calculations of statistics, the frequency of 
  * NODATA values is tracked by the operator and can be retrieved from the results.
  * <p>
+ * The "classifiers" parameter allows you to define the classifiers used on stats computation.
+ * As an instance, suppose you have classifiers like [age, job].
+ * Where age has byte values like [18,19,20,...,80]
+ * job has byte values like [0,1,2,3,4,5,6,...,20] // 0: employer, 1: consultant, ..., 20: professional dancer
+ * Statistic computations made on pixels which belong to the same age value and job value will 
+ * be grouped together. So you will potentially have in output statistics for the group of pixels
+ * related to the set of pixels classifier belonging:
+ *   
+ * age = 18 & job = 0 
+ * age = 18 & job = 1
+ * age = 18 & job = 2
+ * ....
+ * age = 19 & job = 0 
+ * age = 19 & job = 1
+ * age = 19 & job = 2
+ * ...
+ * 
+ * A MultiKey object will be used to represent these tuples of key.
+ * Only the tuples found during the computation will be reported as output results.
+ * As an instance, in case there isn't any pixel belonging to age = 70 & job = 20 (professional dancer),
+ * the output won't contain a <80,20> tuple.
+ * <p>
+ * The optional "noDataClassifiers" parameter allows you to define a specific value to treat as NODATA 
+ * for each classifier image. When specifying the noDataClassifierRanges array entries, make sure to 
+ * use the same order you have used to specify the "classifiers" parameter. The first no data in the
+ * array will be used for the first classifier, the second no data in the array will be used for the
+ * second classifier, and so on... use Double.NaN in case you won't (or you don't know) specify a noData 
+ * for a specific entry.   
+ * Note that although classifier are always of integer types, we use double to allow specifying NaN 
+ * as "unknown/unspecified" element.
+ * <p>
+ * Optionally, you can also specify "pivotClassifiers" (when more then one is needed).
+ * Pivots are classifiers which should be used to form different groups containing 
+ * the same common classifiers and only a distinct (pivot) classifier.
+ * As an instance, suppose you have classifiers like [age, job, sex] and classifiers like
+ * [country, district, town]. Then you would like to do 3 classified stats like this:<BR>
+ * - country, age, job, sex<BR>
+ * - district, age, job, sex<BR>
+ * - town, age, job, sex<BR>   
+ * 
+ * You can specify a "pivotClassifiers" parameter with [country, district, town] and the standard
+ * "classifiers" parameter with [age, job, sex]. Optionally you can also specify noData for pivot 
+ * classifiers (make sure to respect the proper order: first NoData of the array refers to the first
+ * pivot classifier, second NoData of the array refers to the second pivot classifier,...)
+ * <p>
+ * The "noDataPivotClassifiers" parameter allows you to define a specific value to treat as NODATA for 
+ * each pivot classifier image. The same remarks made on "noDataClassifiers" apply to this paramter.
+ * <p>
+ * 
+ * 
  * Example of use...
  * <pre><code>
  * RenderedImage myData = ...
  * RenderedImage myClassifierImage0 = ...
  * RenderedImage myClassifierImage1 = ...
+ * RenderedImage myClassifierImage2 = ...
+ * RenderedImage pivotClassifierImage0 = ...
+ * RenderedImage pivotClassifierImage1 = ...
+ * 
  *
  * ParameterBlockJAI pb = new ParameterBlockJAI("ClassifiedStats");
  * pb.setSource("dataImage", myData);
@@ -92,7 +146,10 @@ import org.jaitools.numeric.Statistic;
  * };
  *
  * pb.setParameter("stats", stats);
- * pb.setParameter("classifiers", new RenderedImage[]{myClassifiedImage0, myClassifiedImage1});
+ * pb.setParameter("classifiers", new RenderedImage[]{myClassifierImage0, myClassifierImage1, myClassifierImage2});
+ * pb.setParameter("pivotClassifiers", new RenderedImage[]{pivotClassifierImage0, pivotClassifierImage1});
+ * pb.setParameter("noDataClassifiers", new Double[] {0d, -1d, -9999d});
+   pb.setParameter("noDataPivotClassifiers", new Double[] {-32768d, Double.NaN});
  * RenderedOp op = JAI.create("ClassifiedStats", pb);
  *
  * ClassifiedStats stats = (ClassifiedStats) op.getProperty(ClassifiedStatsDescriptor.CLASSIFIED_STATS_PROPERTY);
@@ -109,25 +166,9 @@ import org.jaitools.numeric.Statistic;
  *      }
  * }
  * </code></pre>
- *
+ * 
  * The {@code ClassifiedStats} object returned by the {@code getProperty} method above allows
- * you to examine results by image band, classifier key, statistic, range.
- *
- *
- * Optionally, you can also specify pivotClassifiers (when more then one is needed).
- * Pivots are classifiers which should be used to form different groups containing the same common 
- * classifiers and only a disting classifier.
- * As an instance, suppose you have classifiers like [age, job, sex] and classifiers like
- * [country, district, town]. Then you need to do 3 classified stats like this:<BR>
- * - country, age, job, sex<BR>
- * - district, age, job, sex<BR>
- * - town, age, job, sex<BR>   
- * 
- * You can specify a pivotClassifiers parameter with [country, district, town] and the standard
- * classifiers parameter with [age, job, sex]. Optionally you can also specify noData for pivot 
- * classifiers (make sure to respect the proper order: first NoData of the array refers to the first
- * pivot classifier, second NoData of the array refers to the second pivot classifier,...)
- * 
+ * you to examine results by image band, classifier key, pivot, statistic, range.
  * As output, you will get the List of results where the i-th element is related to the 
  * classified stats computed on top of the i-th pivot element
  *  
@@ -291,83 +332,90 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
 
     /** Constructor. */
     public ClassifiedStatsDescriptor() {
-        super(new String[][]{
-                {"GlobalName", "ClassifiedStats"},
-                {"LocalName", "ClassifiedStats"},
-                {"Vendor", "org.jaitools.media.jai"},
-                {"Description", "Calculate neighbourhood statistics"},
-                {"DocURL", "http://code.google.com/p/jaitools/"},
-                {"Version", "1.2.0"},
-
+        super(
+            new String[][] {
+                { "GlobalName", "ClassifiedStats" },
+                { "LocalName", "ClassifiedStats" },
+                { "Vendor", "org.jaitools.media.jai" },
+                { "Description", "Calculate neighbourhood statistics" },
+                { "DocURL", "http://code.google.com/p/jaitools/" },
+                { "Version", "1.2.0" },
                 {
                     "arg0Desc",
-                    String.format("%s - an array of RenderedImage representing the classifier "
-                            + "input images", paramNames[CLASSIFIER_ARG])},
+                    String.format(
+                        "%s - an array of RenderedImage representing the classifier "
+                        + "input images", paramNames[CLASSIFIER_ARG]) },
                 {
                     "arg1Desc",
-                    String.format("%s - an array of RenderedImage representing the pivot classifier "
-                            + "input images", paramNames[PIVOT_CLASSIFIER_ARG])},
+                    String.format(
+                        "%s - an array of RenderedImage representing the pivot classifier "
+                        + "input images", paramNames[PIVOT_CLASSIFIER_ARG]) },
                 {
-                        "arg2Desc",
-                        String.format("%s - an array of Statistic constants specifying the "
-                                + "statistics required", paramNames[STATS_ARG])},
+                    "arg2Desc",
+                    String.format(
+                        "%s - an array of Statistic constants specifying the "
+                        + "statistics required", paramNames[STATS_ARG]) },
 
                 {
-                        "arg3Desc",
-                        String.format("%s (default %s) - the bands of the data image to process",
-                                paramNames[BAND_ARG], paramDefaults[BAND_ARG])},
+                    "arg3Desc",
+                    String.format(
+                        "%s (default %s) - the bands of the data image to process",
+                        paramNames[BAND_ARG], paramDefaults[BAND_ARG]) },
 
                 {
-                        "arg4Desc",
-                        String.format("%s (default ) - an optional ROI for masking the data image",
-                                paramNames[ROI_ARG], paramDefaults[ROI_ARG])},
+                    "arg4Desc",
+                    String.format(
+                        "%s (default ) - an optional ROI for masking the data image",
+                        paramNames[ROI_ARG], paramDefaults[ROI_ARG]) },
 
                 {
-                        "arg5Desc",
-                        String.format("%s (default %s) - an optional Collection of Ranges "
-                                + "that define dataImage values to include or exclude",
-                                paramNames[RANGES_ARG], paramDefaults[RANGES_ARG])},
+                    "arg5Desc",
+                    String.format("%s (default %s) - an optional Collection of Ranges "
+                        + "that define dataImage values to include or exclude",
+                        paramNames[RANGES_ARG], paramDefaults[RANGES_ARG]) },
 
                 {
-                        "arg6Desc",
-                        String.format("%s (default %s) - whether to include or exclude provided ranges",
-                            paramNames[RANGES_TYPE_ARG], paramDefaults[RANGES_TYPE_ARG])},
+                    "arg6Desc",
+                    String.format(
+                        "%s (default %s) - whether to include or exclude provided ranges",
+                        paramNames[RANGES_TYPE_ARG], paramDefaults[RANGES_TYPE_ARG]) },
 
                 {
-                        "arg7Desc",
-                        String.format("%s (default %s) - whether to calculate statistics separately "
+                    "arg7Desc",
+                    String.format(
+                        "%s (default %s) - whether to calculate statistics separately "
                                 + "for ranges (when provided)",
-                            paramNames[RANGE_LOCAL_STATS_ARG], paramDefaults[RANGE_LOCAL_STATS_ARG])},
+                        paramNames[RANGE_LOCAL_STATS_ARG],
+                        paramDefaults[RANGE_LOCAL_STATS_ARG]) },
                 {
-                        "arg8Desc",
-                        String.format("%s (default %s) - an optional Collection of Ranges "
-                            + "defining values to treat as NODATA",
-                            paramNames[NODATA_RANGES_ARG], paramDefaults[NODATA_RANGES_ARG])},
+                    "arg8Desc",
+                    String.format("%s (default %s) - an optional Collection of Ranges "
+                        + "defining values to treat as NODATA",
+                        paramNames[NODATA_RANGES_ARG],
+                        paramDefaults[NODATA_RANGES_ARG]) },
                 {
                     "arg9Desc",
-                    String.format("%s (default %s) - an optional Array of values "
-                        + "defining values to treat as NODATA from the classifier raster inputs\n" 
-                        + "the i-th element of the array refers to the i-th classifier raster source",
-                        paramNames[NODATA_CLASSIFIER_ARG], paramDefaults[NODATA_CLASSIFIER_ARG])},
+                    String.format(
+                        "%s (default %s) - an optional Array of values "
+                                + "defining values to treat as NODATA from the classifier raster inputs\n"
+                                + "the i-th element of the array refers to the i-th classifier raster source",
+                        paramNames[NODATA_CLASSIFIER_ARG],
+                        paramDefaults[NODATA_CLASSIFIER_ARG]) },
                 {
                     "arg10Desc",
-                    String.format("%s (default %s) - an optional Array of values "
-                        + "defining values to treat as NODATA from the pivot classifier raster inputs\n" 
-                        + "the i-th element of the array refers to the i-th pivot classifier raster source",
-                        paramNames[NODATA_PIVOT_CLASSIFIER_ARG], paramDefaults[NODATA_PIVOT_CLASSIFIER_ARG])},
-                                
-                                
-                        
+                    String.format(
+                        "%s (default %s) - an optional Array of values "
+                                + "defining values to treat as NODATA from the pivot classifier raster inputs\n"
+                                + "the i-th element of the array refers to the i-th pivot classifier raster source",
+                        paramNames[NODATA_PIVOT_CLASSIFIER_ARG],
+                        paramDefaults[NODATA_PIVOT_CLASSIFIER_ARG]) },
 
-        },
+            },
 
-        new String[]{RenderedRegistryMode.MODE_NAME}, // supported modes
-
-                srcImageNames, srcImageClasses,
-
-                paramNames, paramClasses, paramDefaults,
-
-                null // valid values (none defined)
+            new String[] { RenderedRegistryMode.MODE_NAME }, 
+            srcImageNames, srcImageClasses,
+            paramNames, paramClasses, paramDefaults,
+            null // valid values (none defined)
         );
     }
 
@@ -389,7 +437,7 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
             return false;
         }
         
-        // CHECKING CLASSIFIER IMAGES
+        // CHECKING CLASSIFIER IMAGES 
         Object renderedObjects = pb.getObjectParameter(CLASSIFIER_ARG);
         RenderedImage[] classifierImages = null;
         if (!(renderedObjects instanceof RenderedImage[])) {
@@ -441,18 +489,16 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                     }
                 }
 
-            } else {
-                if (rangeObject != null) {
-                    ok = false;
-                    msg.append(paramNames[RANGES_ARG]).append(" arg has to be of type List<Range<Double>>");
-                }
+            } else if (rangeObject != null) {
+                ok = false;
+                msg.append(paramNames[RANGES_ARG]).append(" arg has to be of type List<Range<Double>>");
             }
             if (!ok) {
                 return false;
             }
         }
 
-     // CHECKING NoData RANGES
+        // CHECKING NoData RANGES
         Object noDataRangeObject = pb.getObjectParameter(NODATA_RANGES_ARG);
         if (noDataRangeObject != null) {
             boolean ok = true;
@@ -462,25 +508,22 @@ public class ClassifiedStatsDescriptor extends OperationDescriptorImpl {
                         msg.append(paramNames[NODATA_RANGES_ARG]).append(" arg has to be of type List<Range<Double>>");
                     ok = false;
                 }
-            } else {
-                if (noDataRangeObject != null) {
-                    ok = false;
-                    msg.append(paramNames[NODATA_RANGES_ARG]).append(" arg has to be of type List<Range<Double>>");
-                }
+            } else if (noDataRangeObject != null) {
+                ok = false;
+                msg.append(paramNames[NODATA_RANGES_ARG]).append(" arg has to be of type List<Range<Double>>");
             }
             if (!ok) {
                 return false;
             }
         }
 
+        // CHECKING RANGES TYPE
         Object rangesType = pb.getObjectParameter(RANGES_TYPE_ARG);
-        if (rangesType != null) {
-            if (rangesType instanceof Range.Type) {
-                Range.Type rt = (Range.Type) rangesType;
-                if (rangeObject != null && rt == Range.Type.UNDEFINED) {
-                    msg.append(paramNames[RANGES_TYPE_ARG]).append(" arg has to be of Type.EXCLUDED or Type.INCLUDED when specifying a Ranges List");
-                    return false;
-                }
+        if (rangesType != null && rangesType instanceof Range.Type) {
+            Range.Type rt = (Range.Type) rangesType;
+            if (rangeObject != null && rt == Range.Type.UNDEFINED) {
+                msg.append(paramNames[RANGES_TYPE_ARG]).append(" arg has to be of Type.EXCLUDED or Type.INCLUDED when specifying a Ranges List");
+                return false;
             }
         }
 

@@ -35,9 +35,8 @@ import org.jaitools.numeric.Statistic;
 
 
 /**
- * Holds the result for a given combination of image band / classifier / statistic.
- * See documentation for {@code ClassifiedStats} for examples of how to access 
- * results.
+ * Holds the result for a given combination of image band / classifier / statistic / ranges.
+ * See documentation for {@code ClassifiedStats} for examples on how to access results.
  * 
  * @see ClassifiedStats
  * @author Daniele Romagnoli, GeoSolutions SAS

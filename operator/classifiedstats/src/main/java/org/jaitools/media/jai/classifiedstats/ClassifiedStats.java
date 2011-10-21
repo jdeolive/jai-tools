@@ -54,6 +54,13 @@ import org.jaitools.numeric.StreamingSampleStats;
  */
 public class ClassifiedStats {
 
+    /**
+     * List of Map of results.
+     *  - Elements of the list represent results by pivots. (no pivot means list made of a single element).
+     *    Each element of the list is a map of grouped results (<MultiKey, List<Result>>)
+     *  
+     *  see {@link ClassifiedStatsDescriptor} for more info about the concept of Pivot classifier.
+     */
     private List<Map<MultiKey, List<Result>>> results;
     
     /**
@@ -77,22 +84,34 @@ public class ClassifiedStats {
     private ClassifiedStats(ClassifiedStats src, Integer band, Integer pivot, Statistic stat, List<Range<Double>> ranges) {
         this();
         Map<MultiKey, List<Result>> group = null;
+        
+        // Results are firstly grouped by pivot index
+        // When classifying without pivot we use the first element of the list (at index 0)
         int pivotIndex = pivot == null ? 0 : pivot; 
         if (pivotIndex < results.size()){
+            // Get the results group for the specified pivot index
             group = results.get(pivotIndex);
             if (group == null){
+                // In case we haven't a group yet, for that pivot, add it
                 group = new HashMap<MultiKey, List<Result>>();
                 results.add(pivotIndex, group);
             }
         } else {
+            // The pivot index is greater than the current results list size.
+            // add a new group
             group = new HashMap<MultiKey, List<Result>>();
             results.add(group);
         }
         
+        // Get the keySet related to that pivot
         Set<MultiKey> ks = src.results.get(pivotIndex).keySet();
+        
+        // iterate over the keys
         Iterator<MultiKey> it = ks.iterator();
         while (it.hasNext()){
             MultiKey mk = it.next();
+
+            // iterate over the results for each key
             List<Result> rs = src.results.get(pivotIndex).get(mk);
             List<Result> rsCopy = CollectionFactory.list();
             for (Result r: rs){
@@ -118,13 +137,20 @@ public class ClassifiedStats {
     }
 
     /**
-     * Store the results for the given classificationKey. Package-private method used by
-     * {@code ClassifiedStatsOpImage}.
+     * Store the results for the given band, pivotIndex, classificationKey, ranges from the provided stats
+     *  
+     * Package-private method used by {@code ClassifiedStatsOpImage}.
+     *  
+     * @param band selected image band 
+     * @param pivotIndex selected pivot index 
+     * @param classificationKey the keys referring to the results to be set
+     * @param stats input streamingSampleStats to be queried to populate results
+     * @param ranges selected ranges 
      */
-    void setResults(int band, int pivotIndex, MultiKey classificationKey, 
-            StreamingSampleStats stats, List<Range<Double>> ranges) {
+    void setResults(final int band, final int pivotIndex, final MultiKey classificationKey, 
+            final StreamingSampleStats stats, final List<Range<Double>> ranges) {
 
-        //First preliminary check on an already populated list of results for that key
+        //First preliminary check on an already populated group of results for that pivot
         Map<MultiKey, List<Result>> group = null;
         if (pivotIndex < results.size()){
             group = results.get(pivotIndex);
@@ -154,8 +180,19 @@ public class ClassifiedStats {
         group.put(classificationKey, rs);
     }
 
-    void setResults(int band, int group, MultiKey classifierKey, StreamingSampleStats stats) {
-        setResults(band, group, classifierKey, stats, null);
+    /**
+     * Store the results for the given band, pivotIndex, classificationKey, ranges from the provided stats
+     *  
+     * Package-private method used by {@code ClassifiedStatsOpImage}.
+     * 
+     * @param band selected image band 
+     * @param pivotIndex selected pivot index 
+     * @param classificationKey the keys referring to the results to be set
+     * @param stats input streamingSampleStats to be queried to populate results
+     */
+    void setResults(final int band, final int pivotIndex, 
+            final MultiKey classifierKey, final StreamingSampleStats stats) {
+        setResults(band, pivotIndex, classifierKey, stats, null);
     }
 
 
@@ -220,7 +257,7 @@ public class ClassifiedStats {
      * the list will contain the Result for each range.
      * The outer list allows to group results by pivot. In case no pivot classifiers 
      * have been specified, the list will be a singleton and user should always get element 0. 
-     *
+     * 
      * @return the results
      * @see Result
      */

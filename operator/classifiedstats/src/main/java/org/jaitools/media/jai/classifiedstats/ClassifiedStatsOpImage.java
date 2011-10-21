@@ -53,46 +53,14 @@ import org.jaitools.numeric.Statistic;
 import org.jaitools.numeric.StreamingSampleStats;
 
 /**
- * Calculates image summary statistics for a data image.
+ * Calculates image classified summary statistics for a data image.
  * 
- * @see ClassifiedStatsDescriptor Description of the algorithm and example
+ * @see ClassifiedStatsDescriptor for Description of the algorithm and example
  * 
  * @author Daniele Romagnoli, GeoSolutions S.A.S.
  * @since 1.2
  */
 public class ClassifiedStatsOpImage extends NullOpImage {
-
-    private final Integer[] srcBands;
-
-    private final ROI roi;
-
-    private final Statistic[] stats;
-
-    private final RenderedImage dataImage;
-    
-    private int imageWidth;
-    private int imageHeigth;
-    private int imageMinY;
-    private int imageMinX;
-    private int imageMaxX;
-    private int imageMaxY;
-    private int imageMinTileX;
-    private int imageMinTileY;
-    private int imageMaxTileY;
-    private int imageMaxTileX;
-    private int imageTileHeight;
-    private int imageTileWidth;
-
-    private final Rectangle dataImageBounds;
-
-    private final RenderedImage[] classifierImages;
-    
-    private final RenderedImage[] pivotClassifierImages;
-    
-    private double[] noDataForClassifierImages;
-    
-    private double[] noDataForPivotClassifierImages;
-    
 
     /**
      * A simple object holding classifier properties:
@@ -117,8 +85,64 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         
         RandomIter classifierIter;
         boolean checkForNoData;
-        int noData; //Classifiers are always of integer type
+        int noData; //Classifiers are ALWAYS of integer type
     }
+    
+    private final Integer[] srcBands;
+
+    private final ROI roi;
+
+    /** 
+     * Statistics to be computed
+     */
+    private final Statistic[] stats;
+
+    /** 
+     * basic image boundary properties allowing tiled computations 
+     */
+    private int imageWidth;
+    private int imageHeigth;
+    private int imageMinY;
+    private int imageMinX;
+    private int imageMaxX;
+    private int imageMaxY;
+    private int imageMinTileX;
+    private int imageMinTileY;
+    private int imageMaxTileY;
+    private int imageMaxTileX;
+    private int imageTileHeight;
+    private int imageTileWidth;
+    private final Rectangle dataImageBounds;
+
+    private final RenderedImage dataImage;
+    
+    /**
+     * Images used for classifications 
+     */
+    private final RenderedImage[] classifierImages;
+    
+    /**
+     * Pivot Images used for classifications 
+     */
+    private final RenderedImage[] pivotClassifierImages;
+
+    /**
+     * Optional array to specify which value of each classifer should be considered as NoData
+     * and then filter out from the computation, the pixels at those coordinates.
+     * 
+     * Note that although classifier are always of integer types, we use double to allow specifying
+     * NaN as "unknown/unspecified" element 
+     */
+    private double[] noDataForClassifierImages;
+    
+    /**
+     * Optional array to specify which value of each pivotClassifier should be considered as NoData
+     * and then filter out from the computation, the pixels at those coordinates
+     * 
+     * Note that although pivot classifier are always of integer types, we use double to allow 
+     * specifying NaN as "unknown/unspecified" element
+     */
+    private double[] noDataForPivotClassifierImages;
     
     /**
      * Optional ranges to exclude/include values from/in statistics computations
@@ -254,6 +278,10 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         System.arraycopy(bands, 0, this.srcBands, 0, bands.length);
 
         this.roi = roi;
+
+        // --------------------------------------------
+        //           Ranges initialization
+        // --------------------------------------------
         this.rangeLocalStats = rangeLocalStats;
         this.ranges = CollectionFactory.list();
         this.rangesType = rangesType;
@@ -265,6 +293,9 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             }
         }
 
+        // --------------------------------------------
+        //           NoData initialization
+        // --------------------------------------------
         this.noDataRanges = CollectionFactory.list();
         if (noDataRanges != null && !noDataRanges.isEmpty()) {
 
@@ -298,11 +329,11 @@ public class ClassifiedStatsOpImage extends NullOpImage {
     synchronized ClassifiedStats compileStatistics() {
         ClassifiedStats classifiedStats = null;
 
-        // //
+        // --------------------------------
         //
         // Init classifiers and iterators
         //
-        // //
+        // --------------------------------
         final RandomIter dataIter = RandomIterFactory.create(dataImage, dataImageBounds);
         final int numClassifiers = classifierImages.length;
         final int numPivotClassifiers = pivotClassifierImages != null ? pivotClassifierImages.length : 0;
@@ -326,22 +357,23 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             final int noDataClassifierValue = checkForNoData ? (int)noDataForPivotClassifierImages[i] : 0;
             pivotClassifiers[i] = new ClassifierObject(classifierIter, checkForNoData, noDataClassifierValue);
         }
-        // //
+        
+        // --------------------------------
         //
         // Compute statistics
         //
-        // //
+        // --------------------------------
         if (!rangeLocalStats) {
             classifiedStats = compileClassifiedStatistics(dataIter, classifiers, pivotClassifiers);
         } else {
             classifiedStats = compileLocalRangeStatistics(dataIter, classifiers);
         }
         
-        // //
+        // --------------------------------
         // 
         // Closing/disposing the iterators
         // 
-        // //
+        // --------------------------------
         dataIter.done();
         for (int i = 0; i < numClassifiers; i++) {
             classifiers[i].classifierIter.done();
@@ -418,27 +450,14 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             }
         }
         
-        // //
-        //
         // Init iterations parameters
-        //
-        // //
         Type localRangeType = Range.Type.EXCLUDE;
         List<Range<Double>> localRanges = ranges;
         
-        // //
-        //
-        // Iterate
-        //
-        // //
-        // Loop over the tiles
+        // Computing statistics
         computeStatsOnTiles(dataIter, classifiers, pivotClassifiers, localRangeType, localRanges, results);
         
-        // //
-        //
         // Setting results
-        //
-        // //
         for (Integer band : srcBands) {
             int numElements = numPivots > 0 ? numPivots : 1;
             List<Map<MultiKey, StreamingSampleStats>> resultList = results.get(band);
@@ -451,9 +470,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             }
         }
         return classifiedStats;
-       
     }
-
 
     /**
      * Used to calculate statistics when range local statistics are required.
@@ -486,11 +503,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
 
         Type localRangeType = rangesType;
 
-        // //
-        //
         // Iterate
-        //
-        // //
         for (Range<Double> range : rangesList) {
             Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results = CollectionFactory.sortedMap();
             for (int index = 0; index < srcBands.length; index++) {
@@ -504,12 +517,7 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             // Loop over the tiles
             computeStatsOnTiles(dataIter, classifiers, null, localRangeType, localRanges, results);
 
-
-            // //
-            //
             // Setting results
-            //
-            // //
             final Set<MultiKey> classifKeys = new HashSet<MultiKey>();
             for (Integer band : srcBands) {
                 Set<MultiKey> classifierSetForBand = results.get(band).get(0).keySet();
@@ -559,7 +567,6 @@ public class ClassifiedStatsOpImage extends NullOpImage {
             final ClassifierObject[] classifiers,
             final ClassifierObject[] pivotClassifiers, 
             final Type rangesType, List<Range<Double>> ranges, 
-//            final Map<Integer, Map<MultiKey, StreamingSampleStats>> results
             Map<Integer, List<Map<MultiKey, StreamingSampleStats>>> results
             ) {
         
@@ -581,9 +588,8 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                             int col = tileX * imageTileWidth + tCol;
                             if (col >= imageMinX && col <= imageMaxX) {
                                 if (roi == null || roi.contains(col, row)) {
-                                    // Check for noData on classifier Images
-                                    // in case a classifier will refer to a noData pixel
-                                    // skip the stat computation for it.
+                                    // Check for noData on classifier Images:
+                                    // in case a classifier will refer to a noData pixel skip the stat computation for it.
                                     boolean skipStats = false;
                                     for (int i = 0; i < numClassifiers; i++) {
                                         keys[i+pivotClassifiersIncrement] = classifiers[i].classifierIter.getSample(col, row, 0);
@@ -625,7 +631,6 @@ public class ClassifiedStatsOpImage extends NullOpImage {
                                             }
                                             sss.offer(sampleValues[band]);
                                             i++;
-                                            
                                         }
                                     }
                                 }
@@ -656,9 +661,10 @@ public class ClassifiedStatsOpImage extends NullOpImage {
         case 5:
             return new MultiKey(keys[0], keys[1], keys[2], keys[3], keys[4]);
         default:
+            // This constructor will copy keys whilst the previous ones 
+            // with specific number of keys (one by one) won't do the copy
             return new MultiKey(keys);
         }
-        
     }
 
     /**

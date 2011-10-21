@@ -40,6 +40,8 @@ import javax.media.jai.JAI;
 import javax.media.jai.ParameterBlockJAI;
 import javax.media.jai.RenderedOp;
 
+import junit.extensions.TestDecorator;
+
 import org.apache.commons.collections.keyvalue.MultiKey;
 import org.jaitools.CollectionFactory;
 import org.jaitools.numeric.Range;
@@ -57,7 +59,6 @@ public class ClassifiedStatsTest {
     private static final Logger LOGGER = Logger.getLogger("ClassifiedStatsTest");
     
     
-
     @Test
 //    @Ignore
     public void testClassification() throws IOException {
@@ -91,13 +92,19 @@ public class ClassifiedStatsTest {
                 MultiKey key = it.next(); 
                 List<Result> rs = results.get(key);
                 for (Result r: rs){
-                    System.out.println(r.toString());
+                    String s = r.toString();
+                    if (LOGGER.isLoggable(Level.FINE)){
+                        LOGGER.fine(s.toString());
+                    }
                 }
             }
-            
-            System.out.println("Getting Max from the result coming from the 2nd stripe (The first classifier raster, with value = 1), " +
-            		"\n and the second classifier raster with value = 50");
-            System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(0));
+            if (LOGGER.isLoggable(Level.INFO)) {
+                LOGGER.info("Getting Max from the result coming from the 2nd stripe " +
+                		"(The first classifier raster, with value = 1), " +
+                		"\n and the second classifier raster with value = 50\n" + 
+                		stats.band(0).statistic(Statistic.MAX).results().get(0)
+                		    .get(new MultiKey(1,50)).get(0));
+            }
         } finally {
             if (sample != null){
                 try {
@@ -123,9 +130,6 @@ public class ClassifiedStatsTest {
                 }
             }
         }
-        
-//        System.out.println(classifiedResult.get(0).getStatistic());
-        
     }
     
     
@@ -161,8 +165,10 @@ public class ClassifiedStatsTest {
   
           List<Map<MultiKey, List<Result>>> results = stats.results();
           for (int i = 0; i < results.size(); i++){
-              System.out.println("Stats for pivot " + i + ": " + 
+              if (LOGGER.isLoggable(Level.FINE)){
+                  LOGGER.fine("Stats for pivot " + i + ": " + 
                       (i == 0 ? "stripes [1-5, step1]": "verticalLines [51-255, step 51]"));
+              }
               Map<MultiKey, List<Result>> result_i = results.get(i); 
               Set<MultiKey> multikeys = result_i.keySet();
               Iterator<MultiKey> it = multikeys.iterator();
@@ -170,7 +176,10 @@ public class ClassifiedStatsTest {
                   MultiKey key = it.next(); 
                   List<Result> rs = result_i.get(key);
                   for (Result r: rs){
-                      System.out.println(r.toString());
+                      String s = r.toString();
+                      if (LOGGER.isLoggable(Level.FINE)){
+                          LOGGER.fine(s.toString());
+                      }
                   }
               }
           }
@@ -208,9 +217,6 @@ public class ClassifiedStatsTest {
               }
           }
       }
-      
-//      System.out.println(classifiedResult.get(0).getStatistic());
-      
   }
     
     @Test
@@ -250,13 +256,20 @@ public class ClassifiedStatsTest {
             MultiKey key = it.next(); 
             List<Result> rs = results.get(key);
             for (Result r: rs){
-                System.out.println(r.toString());
+                String s = r.toString();
+                if (LOGGER.isLoggable(Level.FINE)){
+                    LOGGER.fine(s.toString());
+                }
             }
         }
-        System.out.println("\nGetting Max from the result coming from the 2nd stripe (The first classifier raster, with value = 1), " +
-        "\n and the second classifier raster with value = 50, for the first and second range");
-        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(0));
-        System.out.println(stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(1));
+        if (LOGGER.isLoggable(Level.INFO)){
+            LOGGER.info("\nGetting Max from the result coming from the 2nd stripe " +
+    		"(The first classifier raster, with value = 1), " +
+                "\n and the second classifier raster with value = 50, " +
+                "for the first and second range\n " +
+                stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(0) + "\n" +
+                stats.band(0).statistic(Statistic.MAX).results().get(0).get(new MultiKey(1,50)).get(1));
+        }
     }
 
 }
